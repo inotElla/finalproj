@@ -1,1 +1,6 @@
 ﻿token.env
+venv/
+__pycache__/
+*.pyc
+*.db
+.env
