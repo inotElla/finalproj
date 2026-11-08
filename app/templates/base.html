@@ -8,10 +8,22 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
-  <nav class="navbar navbar-dark bg-dark">
+    <nav class="navbar navbar-dark bg-dark">
     <div class="container">
       <a class="navbar-brand" href="{{ url_for('main.index') }}">C.A.T.E.R</a>
-      <a class="btn btn-outline-light btn-sm" href="{{ url_for('auth.register') }}">Register</a>
+      <div class="d-flex align-items-center gap-2">
+        {% if current_user.is_authenticated %}
+          <span class="navbar-text text-light me-2">{{ current_user.full_name }}</span>
+          <a class="btn btn-outline-light btn-sm" href="{{ url_for('main.dashboard') }}">Dashboard</a>
+          <form method="POST" action="{{ url_for('auth.logout') }}" class="d-inline">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn btn-light btn-sm">Log out</button>
+          </form>
+        {% else %}
+          <a class="btn btn-outline-light btn-sm" href="{{ url_for('auth.login') }}">Log in</a>
+          <a class="btn btn-light btn-sm" href="{{ url_for('auth.register') }}">Register</a>
+        {% endif %}
+      </div>
     </div>
   </nav>
 

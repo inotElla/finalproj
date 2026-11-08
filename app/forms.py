@@ -1,5 +1,5 @@
 from flask_wtf import FlaskForm
-from wtforms import EmailField, PasswordField, StringField, SubmitField
+from wtforms import BooleanField, EmailField, PasswordField, StringField, SubmitField
 from wtforms.validators import DataRequired, Email, EqualTo, Length, ValidationError
 
 from app.models import User
@@ -29,3 +29,9 @@ class RegistrationForm(FlaskForm):
         pw = field.data
         if not (any(c.isalpha() for c in pw) and any(c.isdigit() for c in pw)):
             raise ValidationError("Password must contain a letter and a number.")
+
+class LoginForm(FlaskForm):
+    email = EmailField("Email", validators=[DataRequired(), Email()])
+    password = PasswordField("Password", validators=[DataRequired()])
+    remember = BooleanField("Remember me")
+    submit = SubmitField("Log in")

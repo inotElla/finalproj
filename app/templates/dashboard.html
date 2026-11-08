@@ -1,0 +1,8 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - C.A.T.E.R{% endblock %}
+
+{% block content %}
+<h2>Dashboard</h2>
+<p>Welcome, {{ current_user.full_name }}. Your role: {{ current_user.role }}.</p>
+{% endblock %}
