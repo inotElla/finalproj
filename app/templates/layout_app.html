@@ -4,10 +4,20 @@
 
 {% block body %}
 {% from "_macros.html" import icon, flashes %}
+
+{# Restore the saved sidebar state before the page paints, so it does not flicker. #}
+<script>
+  try {
+    if (localStorage.getItem("caterSidebar") === "collapsed") {
+      document.body.classList.add("sidebar-collapsed");
+    }
+  } catch (e) {}
+</script>
+
 <div class="app-shell">
 
   {# Sidebar on large screens #}
-  <aside class="app-sidebar" aria-label="Sidebar">
+  <aside class="app-sidebar" id="sidebar" aria-label="Sidebar">
     {% include "_sidebar.html" %}
   </aside>
 
@@ -20,9 +30,15 @@
 
   <div class="app-main">
     <header class="app-topbar">
+      {# Phones and tablets: open the drawer #}
       <button type="button" class="btn btn-soft icon-btn d-lg-none" data-bs-toggle="offcanvas"
               data-bs-target="#appMenu" aria-controls="appMenu" aria-label="Open menu">
         {{ icon('menu') }}
+      </button>
+      {# Large screens: collapse or expand the sidebar #}
+      <button type="button" class="btn btn-soft icon-btn d-none d-lg-inline-flex" id="sidebar-toggle"
+              aria-controls="sidebar" aria-expanded="true" aria-label="Collapse sidebar" title="Collapse or expand the menu">
+        {{ icon('sidebar') }}
       </button>
       <div class="me-auto">
         <h1 class="page-title">{% block page_title %}{% endblock %}</h1>
