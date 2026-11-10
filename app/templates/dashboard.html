@@ -1,8 +1,124 @@
-{% extends "base.html" %}
+{% extends "layout_app.html" %}
+{% from "_macros.html" import icon, status_pill, empty_state %}
 
 {% block title %}Dashboard - C.A.T.E.R{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+{% block page_sub %}Your equipment and events at a glance{% endblock %}
 
-{% block content %}
-<h2>Dashboard</h2>
-<p>Welcome, {{ current_user.full_name }}. Your role: {{ current_user.role }}.</p>
+{% block app_content %}
+
+{# ---------- Welcome ---------- #}
+<section class="welcome mb-4">
+  <div class="welcome-body">
+    <h2>Good day, {{ current_user.full_name.split()[0] }}</h2>
+    {% if stats.overdue %}
+      <p>{{ stats.overdue }} event{{ '' if stats.overdue == 1 else 's' }} ended and still need{{ 's' if stats.overdue == 1 }} a pick-up check.</p>
+      <a class="btn btn-cream btn-sm" href="#pickups">Review pick-ups</a>
+    {% else %}
+      <p>Nothing is waiting for pick-up right now.</p>
+    {% endif %}
+  </div>
+</section>
+
+{# ---------- Numbers ---------- #}
+{% set cards = [
+  ('Equipment types', stats.equipment, 'package', 'sage'),
+  ('Upcoming events', stats.upcoming, 'calendar', 'blue'),
+  ('Items out', stats.items_out, 'truck', 'yellow'),
+  ('Overdue pick-ups', stats.overdue, 'alert', 'pink'),
+] %}
+<div class="row g-3 mb-4">
+  {% for label, value, ic, tone in cards %}
+  <div class="col-6 col-xl-3">
+    <div class="card-c stat">
+      <div class="stat-icon tone-{{ tone }}">{{ icon(ic, 24) }}</div>
+      <div>
+        <div class="stat-value">{{ value }}</div>
+        <div class="stat-label">{{ label }}</div>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<div class="row g-3 mb-4">
+  {# ---------- Upcoming events ---------- #}
+  <div class="col-xl-7">
+    <section class="card-c h-100">
+      <div class="card-head"><h2>Upcoming events</h2></div>
+      {% if events %}
+      <div class="table-responsive">
+        <table class="table table-cater">
+          <thead>
+            <tr>
+              <th scope="col">Client</th>
+              <th scope="col">Date</th>
+              <th scope="col" class="d-none d-md-table-cell">Location</th>
+              <th scope="col">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for e in events %}
+            <tr>
+              <td class="fw-bold">{{ e.client_name }}</td>
+              <td class="text-nowrap">{{ e.event_date.strftime('%b %d') }}<span class="d-none d-md-inline">, {{ e.event_date.strftime('%Y') }}</span></td>
+              <td class="d-none d-md-table-cell">{{ e.location or '-' }}</td>
+              <td>{{ status_pill(e.status) }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+        {{ empty_state('calendar', 'No events yet', 'Events you create will appear here with their status.') }}
+      {% endif %}
+    </section>
+  </div>
+
+  {# ---------- Pick-up alerts ---------- #}
+  <div class="col-xl-5" id="pickups">
+    <section class="card-c h-100">
+      <div class="card-head"><h2>Pick-up alerts</h2></div>
+      <div class="card-body-c">
+        {% if overdue %}
+          {% for e in overdue %}
+          <div class="alert-item">
+            <div class="tile tone-pink">{{ icon('alert', 20) }}</div>
+            <div>
+              <strong>{{ e.client_name }}</strong><br>
+              <small>Ended {{ e.end_time.strftime('%b %d, %I:%M %p') }}{% if e.location %} &middot; {{ e.location }}{% endif %}</small>
+            </div>
+          </div>
+          {% endfor %}
+        {% else %}
+          <div class="all-clear">{{ icon('check-circle', 24) }}<span>All equipment is accounted for.</span></div>
+        {% endif %}
+      </div>
+    </section>
+  </div>
+</div>
+
+{# ---------- Recent activity ---------- #}
+<section class="card-c">
+  <div class="card-head"><h2>Recent activity</h2></div>
+  <div class="card-body-c">
+    {% if recent %}
+    <ul class="timeline">
+      {% for c in recent %}
+      <li class="tl-{{ c.status }}">
+        <div class="tl-text">
+          <strong>{{ c.quantity_out }} &times; {{ c.equipment.name }}{% if c.unit %} ({{ c.unit.code }}){% endif %}</strong>
+          {% if c.status == 'returned' %}returned from{% elif c.status == 'out' %}sent to{% else %}listed for{% endif %}
+          {{ c.event.client_name }}
+        </div>
+        <div class="tl-time">{{ c.created_at|localtime }} {{ status_pill(c.status) }}</div>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+      {{ empty_state('activity', 'No activity yet', 'Equipment sent out and returned will be logged here.') }}
+    {% endif %}
+  </div>
+</section>
+
 {% endblock %}

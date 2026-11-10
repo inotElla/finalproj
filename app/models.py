@@ -39,6 +39,15 @@ class User(UserMixin, BaseModel):
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
 
+    @property
+    def initials(self):
+        parts = self.full_name.split()
+        if not parts:
+            return "?"
+        if len(parts) == 1:
+            return parts[0][:2].upper()
+        return (parts[0][0] + parts[-1][0]).upper()
+
 
 class Equipment(BaseModel):
     name = db.Column(db.String(100), nullable=False)

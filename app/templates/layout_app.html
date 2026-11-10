@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+
+{% block body_class %}app-body{% endblock %}
+
+{% block body %}
+{% from "_macros.html" import icon, flashes %}
+<div class="app-shell">
+
+  {# Sidebar on large screens #}
+  <aside class="app-sidebar" aria-label="Sidebar">
+    {% include "_sidebar.html" %}
+  </aside>
+
+  {# The same menu as a slide-in drawer on phones and tablets #}
+  <div class="offcanvas offcanvas-start" tabindex="-1" id="appMenu" aria-label="Menu">
+    <div class="offcanvas-body p-0">
+      {% with in_drawer=True %}{% include "_sidebar.html" %}{% endwith %}
+    </div>
+  </div>
+
+  <div class="app-main">
+    <header class="app-topbar">
+      <button type="button" class="btn btn-soft icon-btn d-lg-none" data-bs-toggle="offcanvas"
+              data-bs-target="#appMenu" aria-controls="appMenu" aria-label="Open menu">
+        {{ icon('menu') }}
+      </button>
+      <div class="me-auto">
+        <h1 class="page-title">{% block page_title %}{% endblock %}</h1>
+        <p class="page-sub">{% block page_sub %}{% endblock %}</p>
+      </div>
+      <span class="date-chip d-none d-sm-inline-flex">
+        {{ icon('calendar', 16) }}<span id="today"></span>
+      </span>
+    </header>
+
+    <main class="app-content" id="main">
+      {{ flashes() }}
+      {% block app_content %}{% endblock %}
+    </main>
+  </div>
+</div>
+{% endblock %}

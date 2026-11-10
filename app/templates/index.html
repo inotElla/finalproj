@@ -1,10 +1,158 @@
 {% extends "base.html" %}
+{% from "_macros.html" import icon %}
+
+{% block title %}C.A.T.E.R - Catering Asset Tracking and Equipment Retrieval{% endblock %}
 
 {% block content %}
-<h1>Catering Asset Tracking and Equipment Retrieval</h1>
-<p id="status" class="text-muted">Checking API...</p>
-{% endblock %}
 
-{% block scripts %}
-<script src="{{ url_for('static', filename='js/app.js') }}"></script>
+{# ---------- Hero ---------- #}
+<section class="hero">
+  <div class="container">
+    <div class="row align-items-center g-5">
+      <div class="col-lg-6">
+        <span class="eyebrow">{{ icon('package', 16) }} Catering asset tracking</span>
+        <h1 class="mt-3 mb-3">Know where every piece of catering equipment is.</h1>
+        <p class="lead-c">C.A.T.E.R. is a digital inventory and retrieval system that replaces paper logs, tracks equipment across your venues, and helps prevent equipment loss.</p>
+        <div class="d-flex flex-wrap gap-2 mt-4">
+          {% if current_user.is_authenticated %}
+            <a class="btn btn-brand btn-lg" href="{{ url_for('main.dashboard') }}">Go to dashboard {{ icon('arrow', 18) }}</a>
+          {% else %}
+            <a class="btn btn-brand btn-lg" href="{{ url_for('auth.register') }}">Get started {{ icon('arrow', 18) }}</a>
+            <a class="btn btn-soft btn-lg" href="{{ url_for('auth.login') }}">Log in</a>
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="col-lg-6">
+        <div class="hero-visual">
+          <div class="card-c mock">
+            <div class="d-flex justify-content-between align-items-start mb-2">
+              <div>
+                <div class="mock-tag">Example checklist</div>
+                <h2 class="h5 mb-0 mt-1">Santos Wedding</h2>
+                <small class="text-muted">Venue pick-up checklist</small>
+              </div>
+              <span class="pill pill-yellow">Out</span>
+            </div>
+            <ul class="checklist">
+              <li>
+                <span class="check-dot tone-sage">{{ icon('check', 16) }}</span>
+                <span class="me-auto fw-semibold">Monobloc chairs &times; 100</span>
+                <span class="pill pill-sage">Returned</span>
+              </li>
+              <li>
+                <span class="check-dot tone-yellow">{{ icon('clock', 16) }}</span>
+                <span class="me-auto fw-semibold">Chafing dish #3</span>
+                <span class="pill pill-yellow">Out</span>
+              </li>
+              <li>
+                <span class="check-dot tone-rose">{{ icon('alert', 16) }}</span>
+                <span class="me-auto fw-semibold">Sound system</span>
+                <span class="pill pill-rose">Missing</span>
+              </li>
+              <li>
+                <span class="check-dot tone-sage">{{ icon('check', 16) }}</span>
+                <span class="me-auto fw-semibold">Table linens &times; 20</span>
+                <span class="pill pill-sage">Returned</span>
+              </li>
+            </ul>
+            <div class="d-flex justify-content-between small fw-bold mt-2 mb-1" style="color: var(--cater-ink)">
+              <span>2 of 4 returned</span><span>50%</span>
+            </div>
+            <div class="meter" role="progressbar" aria-label="Items returned" aria-valuenow="50" aria-valuemin="0" aria-valuemax="100"><span style="width: 50%"></span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+{# ---------- Problems ---------- #}
+<section class="section">
+  <div class="container">
+    <h2 class="section-title">The problems we solve</h2>
+    <p class="section-sub mb-4">Catering equipment travels far from the stock room. Paper logs make it easy to lose track of it.</p>
+    <div class="row g-3">
+      <div class="col-md-4">
+        <div class="card-c info-card">
+          <div class="tile tone-pink">{{ icon('pin', 24) }}</div>
+          <h3>Equipment loss at off-site events</h3>
+          <p>Items sent to venues away from base are hard to keep an eye on.</p>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="card-c info-card">
+          <div class="tile tone-sage">{{ icon('file', 24) }}</div>
+          <h3>Errors and lost paper logs</h3>
+          <p>Handwritten lists get misplaced, miscounted or never updated.</p>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="card-c info-card">
+          <div class="tile tone-blue">{{ icon('truck', 24) }}</div>
+          <h3>Assets left at event venues</h3>
+          <p>Without a clear record, items left behind go unnoticed until it is too late.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+{# ---------- Features ---------- #}
+<section class="section pt-0">
+  <div class="container">
+    <h2 class="section-title">What C.A.T.E.R. does</h2>
+    <p class="section-sub mb-4">Three simple tools that keep your inventory accurate.</p>
+    <div class="row g-3">
+      <div class="col-md-4">
+        <div class="card-c info-card">
+          <div class="tile tone-yellow">{{ icon('package', 24) }}</div>
+          <h3>Equipment registration</h3>
+          <p>Register each item with its name, quantity and category.</p>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="card-c info-card">
+          <div class="tile tone-sage">{{ icon('check-circle', 24) }}</div>
+          <h3>Availability &amp; retrieval</h3>
+          <p>See what is available and what has been returned.</p>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="card-c info-card">
+          <div class="tile tone-blue">{{ icon('activity', 24) }}</div>
+          <h3>Inventory status logs</h3>
+          <p>Keep a record of usage dates, retrieval times and item quantities.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+{# ---------- Goals ---------- #}
+<section class="band section">
+  <div class="container">
+    <h2 class="section-title mb-4">Built to help you</h2>
+    <div class="row g-4">
+      <div class="col-sm-6 col-lg-3"><div class="goal">{{ icon('check-circle') }}<span>Track equipment status across active venues</span></div></div>
+      <div class="col-sm-6 col-lg-3"><div class="goal">{{ icon('check-circle') }}<span>Use fully digital checklists</span></div></div>
+      <div class="col-sm-6 col-lg-3"><div class="goal">{{ icon('check-circle') }}<span>Get pick-up alerts after an event ends</span></div></div>
+      <div class="col-sm-6 col-lg-3"><div class="goal">{{ icon('check-circle') }}<span>Reduce unrecovered equipment</span></div></div>
+    </div>
+  </div>
+</section>
+
+{# ---------- Call to action ---------- #}
+{% if not current_user.is_authenticated %}
+<section class="section">
+  <div class="container">
+    <div class="cta text-center">
+      <h2 class="mb-2">Ready to stop losing equipment?</h2>
+      <p class="mb-4">Create an account and start tracking your catering assets today.</p>
+      <a class="btn btn-cream btn-lg" href="{{ url_for('auth.register') }}">Create an account</a>
+    </div>
+  </div>
+</section>
+{% endif %}
+
 {% endblock %}
