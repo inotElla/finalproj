@@ -1,4 +1,5 @@
 # c.a.t.e.r
+<<<<<<< HEAD
 
 # Catering Asset Tracking and Equipment Retrieval
 
@@ -19,3 +20,5 @@ MAIL_DEFAULT_SENDER=<the sender address approved by your SMTP provider>
 For Gmail, use an App Password rather than your normal account password.
 Reset links expire after one hour. In production, serve the app over HTTPS and
 make sure its public hostname is used when generating links.
+=======
+>>>>>>> 2138981f7544e341fcba86d2f28b1e1ccdf49279

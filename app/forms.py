@@ -36,7 +36,6 @@ class LoginForm(FlaskForm):
     remember = BooleanField("Remember me")
     submit = SubmitField("Log in")
 
-
 class PasswordResetRequestForm(FlaskForm):
     email = EmailField(
         "Email", validators=[DataRequired(), Email(), Length(max=120)]
