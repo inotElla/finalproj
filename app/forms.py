@@ -35,3 +35,29 @@ class LoginForm(FlaskForm):
     password = PasswordField("Password", validators=[DataRequired()])
     remember = BooleanField("Remember me")
     submit = SubmitField("Log in")
+
+
+class PasswordResetRequestForm(FlaskForm):
+    email = EmailField(
+        "Email", validators=[DataRequired(), Email(), Length(max=120)]
+    )
+    submit = SubmitField("Send reset link")
+
+
+class ResetPasswordForm(FlaskForm):
+    password = PasswordField(
+        "New password", validators=[DataRequired(), Length(min=8, max=128)]
+    )
+    confirm_password = PasswordField(
+        "Confirm new password",
+        validators=[
+            DataRequired(),
+            EqualTo("password", message="Passwords must match."),
+        ],
+    )
+    submit = SubmitField("Reset password")
+
+    def validate_password(self, field):
+        pw = field.data
+        if not (any(c.isalpha() for c in pw) and any(c.isdigit() for c in pw)):
+            raise ValidationError("Password must contain a letter and a number.")

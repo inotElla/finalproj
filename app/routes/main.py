@@ -7,13 +7,11 @@ from app.models import Equipment, EquipmentUnit, User
 
 main_bp = Blueprint("main", __name__)
 
-# The Philippines has no daylight saving time, so a fixed UTC+8 offset is enough.
 PH_TZ = timezone(timedelta(hours=8))
 
 
 @main_bp.app_template_filter("localtime")
 def localtime(value, fmt="%b %d, %Y %I:%M %p"):
-    """Show a UTC timestamp from the database in Philippine time."""
     if value is None:
         return ""
     if value.tzinfo is None:
