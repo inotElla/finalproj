@@ -50,11 +50,6 @@ def _serializer():
 
 
 def _password_stamp(user):
-    """A short fingerprint of the user's current password hash.
-
-    It is stored inside the reset token. When the password changes, the
-    fingerprint changes too, so a link that was already used stops working.
-    """
     return hashlib.sha256(user.password_hash.encode()).hexdigest()[:16]
 
 
@@ -64,12 +59,11 @@ def make_reset_token(user):
 
 
 def get_user_from_reset_token(token):
-    """Return the user a valid reset token belongs to, or None."""
     try:
         payload = _serializer().loads(
             token, salt=RESET_SALT, max_age=RESET_TOKEN_MAX_AGE
         )
-    except BadData:  # tampered, malformed or expired
+    except BadData:  
         return None
 
     if not isinstance(payload, dict) or not isinstance(payload.get("id"), int):
@@ -77,7 +71,7 @@ def get_user_from_reset_token(token):
 
     user = db.session.get(User, payload["id"])
     if user is None or payload.get("stamp") != _password_stamp(user):
-        return None  # the password already changed, so the link was used
+        return None  
     return user
 
 
@@ -140,12 +134,10 @@ def request_password_reset():
             try:
                 send_reset_email(user)
             except Exception:
-                # Log the real reason, but show the same message either way so the
-                # form cannot be used to find out which emails have accounts.
                 current_app.logger.exception("Could not send the password reset email")
 
         flash(
-            "If an account exists for that email, a password reset link has been sent.",
+            "If an account exists, a password reset link has been sent.",
             "info",
         )
         return redirect(url_for("auth.login"))
@@ -167,7 +159,7 @@ def reset_password(token):
     if form.validate_on_submit():
         user.set_password(form.password.data)
         user.save()
-        flash("Your password has been reset. You can now log in.", "success")
+        flash("Your password has been reset.", "success")
         return redirect(url_for("auth.login"))
 
     return render_template("reset_password.html", form=form)
