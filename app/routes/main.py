@@ -1,11 +1,9 @@
 from datetime import datetime, timedelta, timezone
 
 from flask import Blueprint, jsonify, render_template
-from flask_login import login_required
-from sqlalchemy import func
+from flask_login import current_user, login_required
 
-from app import db
-from app.models import Checkout, Equipment, Event
+from app.models import Equipment, EquipmentUnit, User
 
 main_bp = Blueprint("main", __name__)
 
@@ -36,46 +34,17 @@ def health():
 @main_bp.route("/dashboard")
 @login_required
 def dashboard():
-    now = datetime.now()
-
-    items_out = (
-        db.session.query(
-            func.coalesce(
-                func.sum(
-                    Checkout.quantity_out
-                    - Checkout.quantity_returned
-                    - Checkout.quantity_damaged
-                    - Checkout.quantity_missing
-                ),
-                0,
-            )
-        )
-        .filter(Checkout.status == "out")
-        .scalar()
-    )
-
-    # Events whose end time has passed but that are not closed out yet.
-    overdue = (
-        Event.query.filter(Event.end_time < now, Event.status != "completed")
-        .order_by(Event.end_time)
-        .all()
-    )
-
     stats = {
         "equipment": Equipment.query.count(),
-        "upcoming": Event.query.filter(Event.status == "upcoming").count(),
-        "items_out": int(items_out or 0),
-        "overdue": len(overdue),
+        "items_out": EquipmentUnit.query.filter_by(status="out").count(),
     }
-
-    events = (
-        Event.query.filter(Event.status != "completed")
-        .order_by(Event.event_date)
-        .limit(5)
-        .all()
-    )
-    recent = Checkout.query.order_by(Checkout.created_at.desc()).limit(6).all()
+    recent = Equipment.query.order_by(Equipment.created_at.desc()).limit(6).all()
+    staff = User.query.order_by(User.full_name).all() if current_user.role == "admin" else []
 
     return render_template(
-        "dashboard.html", stats=stats, overdue=overdue, events=events, recent=recent
+        "dashboard.html",
+        stats=stats,
+        recent=recent,
+        staff=staff,
+        staff_total=len(staff),
     )

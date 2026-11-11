@@ -612,3 +612,106 @@ a { text-underline-offset: 3px; }
 }
 .empty-state h3 { font-size: 1rem; margin-bottom: .25rem; }
 .empty-state p { margin: 0 auto; color: var(--cater-muted); max-width: 22rem; }
+
+/* ---------- Collapsible sidebar (large screens) ---------- */
+.app-sidebar { transition: width .2s ease, flex-basis .2s ease; }
+
+body.sidebar-collapsed .app-sidebar { width: 84px; flex-basis: 84px; }
+body.sidebar-collapsed .app-sidebar .sidebar-inner { padding-inline: .7rem; }
+body.sidebar-collapsed .app-sidebar .sidebar-top { justify-content: center; padding: 0; }
+
+/* Hide the text but keep it for screen readers. */
+body.sidebar-collapsed .app-sidebar .brand-text,
+body.sidebar-collapsed .app-sidebar .sb-text {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+body.sidebar-collapsed .app-sidebar .nav-link-c { justify-content: center; padding: .75rem 0; }
+body.sidebar-collapsed .app-sidebar .nav-label {
+  height: 1px;
+  margin: 1rem .6rem;
+  padding: 0;
+  font-size: 0;
+  overflow: hidden;
+  background: var(--cater-line);
+}
+body.sidebar-collapsed .app-sidebar .user-card { padding: .6rem .4rem; }
+body.sidebar-collapsed .app-sidebar .user-card > div { justify-content: center; }
+body.sidebar-collapsed .app-sidebar .user-card .btn { padding: .45rem 0; }
+
+/* ---------- Dashboard: live tag, staff list ---------- */
+.live-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  padding: .2rem .7rem;
+  border-radius: 999px;
+  background: var(--cater-sage-soft);
+  border: 1px solid var(--cater-sage);
+  color: var(--cater-ink);
+  font-size: .75rem;
+  font-weight: 800;
+}
+.live-dot { width: .5rem; height: .5rem; border-radius: 50%; background: var(--cater-green); }
+
+.avatar.tone-sage   { background: var(--cater-sage); }
+.avatar.tone-blue   { background: var(--cater-blue); }
+.avatar.tone-pink   { background: var(--cater-pink); }
+.avatar.tone-yellow { background: var(--cater-yellow); }
+.avatar-sm { width: 38px; height: 38px; font-size: .8rem; }
+
+.staff-list { list-style: none; margin: 0; padding: 0; }
+.staff-list li {
+  display: flex;
+  align-items: center;
+  gap: .8rem;
+  padding: .7rem 0;
+  border-bottom: 1px dashed var(--cater-line);
+}
+.staff-list li:first-child { padding-top: 0; }
+.staff-list li:last-child { border-bottom: 0; }
+.staff-meta { min-width: 0; flex: 1; }
+.staff-name { font-weight: 800; color: var(--cater-ink); line-height: 1.25; }
+.staff-email {
+  color: var(--cater-muted);
+  font-size: .82rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.staff-joined { color: var(--cater-muted); font-size: .75rem; margin-top: .2rem; white-space: nowrap; }
+.you-tag {
+  display: inline-block;
+  margin-left: .25rem;
+  padding: 0 .45rem;
+  border-radius: 999px;
+  background: var(--cater-cream);
+  border: 1px solid var(--cater-line);
+  color: var(--cater-muted);
+  font-size: .68rem;
+  font-weight: 800;
+  vertical-align: .1em;
+}
+.staff-note { margin: .9rem 0 0; color: var(--cater-muted); font-size: .82rem; }
+
+.table-cater thead th { white-space: nowrap; }
+
+/* Keep tables inside the card on phones */
+@media (max-width: 575.98px) {
+  .table-cater thead th,
+  .table-cater td { padding-inline: .6rem; }
+  .table-cater thead th:first-child,
+  .table-cater td:first-child { padding-left: 1rem; }
+  .table-cater thead th:last-child,
+  .table-cater td:last-child { padding-right: 1rem; }
+}
+
+/* Lets long names inside flex rows shorten with "..." instead of stretching the layout */
+.min-w-0 { min-width: 0; }

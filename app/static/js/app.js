@@ -1,4 +1,3 @@
-// Show today's date in the dashboard top bar.
 const todayEl = document.getElementById("today");
 if (todayEl) {
   todayEl.textContent = new Date().toLocaleDateString("en-PH", {
@@ -9,7 +8,6 @@ if (todayEl) {
   });
 }
 
-// Registration: tell the user right away if the two passwords differ.
 const password = document.getElementById("password");
 const confirmPassword = document.getElementById("confirm_password");
 
@@ -20,4 +18,24 @@ if (password && confirmPassword) {
   };
   password.addEventListener("input", checkMatch);
   confirmPassword.addEventListener("input", checkMatch);
+}
+
+const sidebarToggle = document.getElementById("sidebar-toggle");
+
+if (sidebarToggle) {
+  const applySidebar = (collapsed) => {
+    document.body.classList.toggle("sidebar-collapsed", collapsed);
+    sidebarToggle.setAttribute("aria-expanded", String(!collapsed));
+    sidebarToggle.setAttribute("aria-label", collapsed ? "Expand sidebar" : "Collapse sidebar");
+  };
+
+  applySidebar(document.body.classList.contains("sidebar-collapsed"));
+
+  sidebarToggle.addEventListener("click", () => {
+    const collapsed = !document.body.classList.contains("sidebar-collapsed");
+    applySidebar(collapsed);
+    try {
+      localStorage.setItem("caterSidebar", collapsed ? "collapsed" : "expanded");
+    } catch (e) {}
+  });
 }
