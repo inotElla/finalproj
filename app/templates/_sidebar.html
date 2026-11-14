@@ -31,12 +31,9 @@
       {% endif %}
     {% endfor %}
 
-    {% if current_user.role == 'admin' %}
-    <div class="nav-label">Team</div>
-    <span class="nav-link-c is-soon" aria-disabled="true" title="Staff (coming soon)">
-      {{ icon('users') }}<span class="sb-text">Staff</span><span class="soon-tag sb-text">Soon</span>
-    </span>
-    {% endif %}
+<a href="{{ url_for('staff.index') }}" class="nav-link-c {% if request.blueprint == 'staff' %}is-active{% endif %}" title="Staff">
+  {{ icon('users') }}<span class="sb-text">Staff</span>
+</a>
 
     <div class="nav-label">Account</div>
     {% set on_profile = ep and ep.startswith('profile.') %}

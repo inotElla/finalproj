@@ -1,7 +1,7 @@
 from flask_login import current_user
 from flask_wtf import FlaskForm
-from wtforms import BooleanField, EmailField, PasswordField, StringField, SubmitField
-from wtforms.validators import DataRequired, Email, EqualTo, Length, ValidationError
+from wtforms import BooleanField, EmailField, PasswordField, StringField, SubmitField, SelectField, IntegerField
+from wtforms.validators import DataRequired, Email, EqualTo, Length, ValidationError, NumberRange, Optional
 
 from app.models import User
 
@@ -111,3 +111,50 @@ class ChangePasswordForm(FlaskForm):
     def validate_password(self, field):
         if current_user.check_password(field.data):
             raise ValidationError("Your new password must be different from the current one.")
+
+# ---------- Staff & Event Management Forms ----------
+
+class StaffEditForm(FlaskForm):
+    full_name = StringField(
+        "Full name", validators=[DataRequired(), Length(min=2, max=100)]
+    )
+    role = SelectField(
+        "Role",
+        choices=[("staff", "Staff"), ("admin", "Admin")],
+        validators=[DataRequired()],
+    )
+    status = SelectField(
+        "Status",
+        choices=[("available", "Available"), ("in event", "In Event")],
+        validators=[DataRequired()],
+    )
+    event_id = SelectField(
+        "Assigned Event", coerce=int, validators=[Optional()]
+    )
+    submit = SubmitField("Save changes")
+
+
+class EventCreateForm(FlaskForm):
+    name = StringField(
+        "Event name", validators=[DataRequired(), Length(min=2, max=150)]
+    )
+    venue = StringField("Venue / Location", validators=[Optional(), Length(max=200)])
+    status = SelectField(
+        "Status",
+        choices=[
+            ("ongoing", "Ongoing"),
+            ("upcoming", "Upcoming"),
+            ("completed", "Completed"),
+        ],
+        default="ongoing",
+    )
+    submit = SubmitField("Create Event")
+
+
+class AssignEquipmentForm(FlaskForm):
+    equipment_id = SelectField("Equipment", coerce=int, validators=[DataRequired()])
+    quantity = IntegerField(
+        "Quantity", default=1, validators=[DataRequired(), NumberRange(min=1)]
+    )
+    notes = StringField("Notes / Instructions", validators=[Optional(), Length(max=200)])
+    submit = SubmitField("Assign Equipment")

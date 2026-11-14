@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{% block title %}Edit Staff - {{ staff.full_name }}{% endblock %}
+
+{% block content %}
+<div class="container py-4" style="max-width: 650px;">
+  <div class="mb-3">
+    <a href="{{ url_for('staff.detail', user_id=staff.id) }}" class="text-muted small">&larr; Back to details</a>
+  </div>
+
+  <div class="card shadow-sm border-0">
+    <div class="card-header bg-white py-3">
+      <h4 class="mb-0 fw-bold">Edit Staff & Assign Event</h4>
+      <div class="text-muted small">Admin management controls</div>
+    </div>
+    <div class="card-body p-4">
+      <form method="POST" novalidate>
+        {{ form.hidden_tag() }}
+
+        <div class="mb-3">
+          {{ form.full_name.label(class="form-label fw-semibold") }}
+          {{ form.full_name(class="form-control" + (" is-invalid" if form.full_name.errors else "")) }}
+        </div>
+
+        <div class="row g-3 mb-3">
+          <div class="col-md-6">
+            {{ form.role.label(class="form-label fw-semibold") }}
+            {{ form.role(class="form-select") }}
+          </div>
+          <div class="col-md-6">
+            {{ form.status.label(class="form-label fw-semibold") }}
+            {{ form.status(class="form-select", id="statusSelect") }}
+          </div>
+        </div>
+
+        <div class="mb-4 p-3 bg-light rounded border">
+          <label for="event_id" class="form-label fw-semibold">Assign to Event</label>
+          {{ form.event_id(class="form-select", id="eventSelect") }}
+          <div class="form-text small mt-1">Select an active event. Choosing an event automatically sets status to <em>In Event</em>.</div>
+        </div>
+
+        <div class="d-flex justify-content-end gap-2">
+          <a href="{{ url_for('staff.detail', user_id=staff.id) }}" class="btn btn-outline-secondary">Cancel</a>
+          {{ form.submit(class="btn btn-primary px-4") }}
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+  const statusSelect = document.getElementById("statusSelect");
+  const eventSelect = document.getElementById("eventSelect");
+
+  eventSelect.addEventListener("change", function() {
+    if (parseInt(this.value, 10) > 0) {
+      statusSelect.value = "in event";
+    } else {
+      statusSelect.value = "available";
+    }
+  });
+
+  statusSelect.addEventListener("change", function() {
+    if (this.value === "available") {
+      eventSelect.value = "0";
+    }
+  });
+});
+</script>
+{% endblock %}

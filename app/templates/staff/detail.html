@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+
+{% block title %}{{ staff.full_name }} - Staff Details{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+  <div class="mb-3">
+    <a href="{{ url_for('staff.index') }}" class="text-decoration-none text-muted small">&larr; Back to Staff Directory</a>
+  </div>
+
+  <div class="row g-4">
+    <!-- Staff Card -->
+    <div class="col-lg-4">
+      <div class="card shadow-sm border-0 text-center p-4">
+        <div class="avatar-circle mx-auto mb-3 fw-bold text-white bg-dark d-flex align-items-center justify-content-center rounded-circle" style="width: 70px; height: 70px; font-size: 1.5rem;">
+          {{ staff.initials }}
+        </div>
+        <h4 class="fw-bold mb-1">{{ staff.full_name }}</h4>
+        <p class="text-muted small mb-3">{{ staff.email }}</p>
+
+        <div class="d-flex justify-content-center gap-2 mb-3">
+          <span class="badge bg-dark px-3 py-2 text-capitalize">{{ staff.role }}</span>
+          {% if staff.status == 'in event' %}
+            <span class="badge bg-primary px-3 py-2">● In Event</span>
+          {% else %}
+            <span class="badge bg-success px-3 py-2">✓ Available</span>
+          {% endif %}
+        </div>
+
+        {% if is_admin %}
+        <div class="mt-3">
+          <a href="{{ url_for('staff.edit', user_id=staff.id) }}" class="btn btn-primary w-100">
+            Edit Details & Assign Event
+          </a>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Assigned Event & Equipment Card -->
+    <div class="col-lg-8">
+      <div class="card shadow-sm border-0">
+        <div class="card-header bg-white py-3">
+          <h5 class="mb-0 fw-bold">Current Event Assignment & Equipment</h5>
+        </div>
+        <div class="card-body p-4">
+          {% if staff.status == 'in event' and current_event %}
+            <div class="p-3 bg-light rounded border mb-4">
+              <h5 class="fw-bold text-primary mb-1">📅 {{ current_event.name }}</h5>
+              <div class="text-muted small"><strong>Venue:</strong> {{ current_event.venue or "No venue specified" }}</div>
+            </div>
+
+            <h6 class="fw-bold mb-3">📦 Equipment Allocated for this Event:</h6>
+            {% if current_event.equipment_assignments %}
+            <div class="table-responsive">
+              <table class="table table-sm table-hover border">
+                <thead class="table-light small text-muted">
+                  <tr>
+                    <th>Equipment</th>
+                    <th>Category</th>
+                    <th>Unit / Type</th>
+                    <th class="text-center">Qty</th>
+                    <th>Condition</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for item in current_event.equipment_assignments %}
+                  <tr>
+                    <td class="fw-bold">{{ item.equipment.name }}</td>
+                    <td>{{ item.equipment.category or 'General' }}</td>
+                    <td>{{ item.unit.code if item.unit else 'Bulk' }}</td>
+                    <td class="text-center fw-bold">{{ item.quantity }}</td>
+                    <td><span class="badge bg-success-subtle text-success">{{ item.unit.condition if item.unit else 'Good' }}</span></td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+            {% else %}
+            <div class="alert alert-light border text-center py-4 text-muted">No equipment assigned to this event yet.</div>
+            {% endif %}
+          {% else %}
+            <div class="text-center py-5 text-muted">
+              <h5>Staff is Currently Available</h5>
+              <p class="small">This staff member is not currently assigned to any event.</p>
+              {% if is_admin %}
+              <a href="{{ url_for('staff.edit', user_id=staff.id) }}" class="btn btn-outline-primary btn-sm">Assign to Event</a>
+              {% endif %}
+            </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
