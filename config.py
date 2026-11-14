@@ -10,6 +10,10 @@ def env_flag(name, default="false"):
 
 
 class Config:
+    SQLALCHEMY_ENGINE_OPTIONS = {
+        "pool_pre_ping": True,   
+        "pool_recycle": 280,    
+    }
     
     SECRET_KEY = os.environ["SECRET_KEY"]
     SQLALCHEMY_DATABASE_URI = os.environ["DATABASE_URL"]

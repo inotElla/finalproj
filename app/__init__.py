@@ -14,7 +14,6 @@ login_manager.login_message_category = "warning"
 mail = Mail()
 
 
-
 def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
@@ -28,8 +27,10 @@ def create_app():
 
     from app.routes.auth import auth_bp
     from app.routes.main import main_bp
+    from app.routes.profile import profile_bp
     app.register_blueprint(main_bp)
     app.register_blueprint(auth_bp)
+    app.register_blueprint(profile_bp)
 
     with app.app_context():
         db.create_all()

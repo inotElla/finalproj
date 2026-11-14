@@ -39,9 +39,11 @@
     {% endif %}
 
     <div class="nav-label">Account</div>
-    <span class="nav-link-c is-soon" aria-disabled="true" title="My profile (coming soon)">
-      {{ icon('check-circle') }}<span class="sb-text">My profile</span><span class="soon-tag sb-text">Soon</span>
-    </span>
+    {% set on_profile = ep and ep.startswith('profile.') %}
+<a class="nav-link-c {{ 'active' if on_profile }}" href="{{ url_for('profile.show_profile') }}" title="My profile"
+   {% if on_profile %}aria-current="page"{% endif %}>
+  {{ icon('user') }}<span class="sb-text">My profile</span>
+</a>
   </nav>
 
   <div class="user-card">
