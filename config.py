@@ -6,7 +6,6 @@ load_dotenv()
 
 
 def env_flag(name, default="false"):
-    """Read a true/false setting from the environment."""
     return os.environ.get(name, default).strip().lower() in ("1", "true", "yes", "on")
 
 
@@ -27,8 +26,4 @@ class Config:
     MAIL_PASSWORD = os.environ.get("MAIL_PASSWORD")
     MAIL_DEFAULT_SENDER = os.environ.get("MAIL_DEFAULT_SENDER") or MAIL_USERNAME
 
-    # Optional: the public address of the site, for example https://cater.onrender.com
-    # When set, links inside emails always use it instead of the address the
-    # visitor typed, which stops forged "Host" headers from poisoning reset links.
-    #APP_BASE_URL = os.environ.get("APP_BASE_URL", "").rstrip("/")
-
+    APP_BASE_URL = os.environ.get("APP_BASE_URL", "").rstrip("/")

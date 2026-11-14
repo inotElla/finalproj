@@ -1,0 +1,120 @@
+{% extends "layout_app.html" %}
+{% from "_macros.html" import render_field, icon %}
+
+{% block title %}My profile - C.A.T.E.R{% endblock %}
+{% block page_title %}My profile{% endblock %}
+{% block page_sub %}Update your name, email and password{% endblock %}
+
+{% block app_content %}
+
+{# ---------- Who you are ---------- #}
+<section class="card-c p-4 mb-4 d-flex align-items-center flex-wrap gap-3 gap-md-4">
+  <div class="avatar" style="width:84px;height:84px;font-size:1.7rem;" aria-hidden="true">
+    {{ current_user.initials }}
+  </div>
+  <div class="min-w-0">
+    <h2 class="h4 mb-1 text-break">{{ current_user.full_name }}</h2>
+    <p class="text-muted mb-2 text-break">{{ current_user.email }}</p>
+    <span class="pill pill-sage">{{ current_user.role|capitalize }}</span>
+    {% if current_user.created_at %}
+      <span class="small text-muted ms-2">Member since {{ current_user.created_at.strftime("%B %d, %Y") }}</span>
+    {% endif %}
+  </div>
+</section>
+
+{# ---------- Settings: each row shows the current value; the form opens on "Change" ---------- #}
+<section class="card-c" aria-label="Account settings">
+
+  {# Name #}
+  <div class="p-4">
+    <div class="d-flex align-items-center justify-content-between gap-3">
+      <div class="min-w-0">
+        <h3 class="h6 mb-1">Name</h3>
+        <p class="mb-0 text-muted text-break">{{ current_user.full_name }}</p>
+      </div>
+      <button type="button" class="btn btn-soft btn-sm flex-none" data-bs-toggle="collapse"
+              data-bs-target="#name-panel" aria-controls="name-panel"
+              aria-expanded="{{ 'true' if open_section == 'name' else 'false' }}">Change</button>
+    </div>
+    <div class="collapse profile-panel {{ 'show' if open_section == 'name' }}" id="name-panel">
+      <form method="POST" action="{{ url_for('profile.update_name') }}" class="pt-3">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        {{ render_field(name_form.full_name) }}
+        <div class="d-flex flex-wrap gap-2">
+          {{ name_form.save_name(class="btn btn-brand") }}
+          <button type="button" class="btn btn-soft" data-bs-toggle="collapse" data-bs-target="#name-panel">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  {# Email #}
+  <div class="p-4" style="border-top:1px solid var(--cater-line);">
+    <div class="d-flex align-items-center justify-content-between gap-3">
+      <div class="min-w-0">
+        <h3 class="h6 mb-1">Email</h3>
+        <p class="mb-0 text-muted text-break">{{ current_user.email }}</p>
+      </div>
+      <button type="button" class="btn btn-soft btn-sm flex-none" data-bs-toggle="collapse"
+              data-bs-target="#email-panel" aria-controls="email-panel"
+              aria-expanded="{{ 'true' if open_section == 'email' else 'false' }}">Change</button>
+    </div>
+    <div class="collapse profile-panel {{ 'show' if open_section == 'email' }}" id="email-panel">
+      <p class="text-muted small pt-3 mb-3">
+        We send a confirmation link to the new address. Your email only changes after you open it.
+      </p>
+      <form method="POST" action="{{ url_for('profile.request_email_change') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        {{ render_field(email_form.new_email) }}
+        {{ render_field(email_form.email_password, hint="We ask for your password to make sure it is really you.") }}
+        <div class="d-flex flex-wrap gap-2">
+          {{ email_form.save_email(class="btn btn-brand") }}
+          <button type="button" class="btn btn-soft" data-bs-toggle="collapse" data-bs-target="#email-panel">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  {# Password #}
+  <div class="p-4" style="border-top:1px solid var(--cater-line);">
+    <div class="d-flex align-items-center justify-content-between gap-3">
+      <div class="min-w-0">
+        <h3 class="h6 mb-1">Password</h3>
+        <p class="mb-0 text-muted"><span aria-hidden="true">&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;</span><span class="visually-hidden">Hidden for your security</span></p>
+      </div>
+      <button type="button" class="btn btn-soft btn-sm flex-none" data-bs-toggle="collapse"
+              data-bs-target="#password-panel" aria-controls="password-panel"
+              aria-expanded="{{ 'true' if open_section == 'password' else 'false' }}">Change</button>
+    </div>
+    <div class="collapse profile-panel {{ 'show' if open_section == 'password' }}" id="password-panel">
+      <form method="POST" action="{{ url_for('profile.update_password') }}" class="pt-3">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        {{ render_field(password_form.current_password) }}
+        {{ render_field(password_form.password, hint="At least 8 characters, with a letter and a number.") }}
+        {{ render_field(password_form.confirm_password) }}
+        <div class="d-flex flex-wrap gap-2">
+          {{ password_form.save_password(class="btn btn-brand") }}
+          <button type="button" class="btn btn-soft" data-bs-toggle="collapse" data-bs-target="#password-panel">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // Put the cursor in the first box when a form opens.
+  document.querySelectorAll(".profile-panel").forEach((panel) => {
+    panel.addEventListener("shown.bs.collapse", () => {
+      const first = panel.querySelector("input:not([type=hidden])");
+      if (first) first.focus();
+    });
+  });
+
+  // After a failed save the form is already open: scroll it into view so the errors are seen.
+  const openPanel = document.querySelector(".profile-panel.show");
+  if (openPanel) openPanel.scrollIntoView({ block: "center" });
+</script>
+{% endblock %}
