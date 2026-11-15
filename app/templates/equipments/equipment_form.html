@@ -1,0 +1,51 @@
+{% extends "layout_app.html" %}
+{% from "_macros.html" import render_field %}
+
+{% block title %}Edit equipment - C.A.T.E.R{% endblock %}
+{% block page_title %}Edit equipment{% endblock %}
+{% block page_sub %}{{ equipment.name }}{% endblock %}
+
+{% block app_content %}
+<section class="card-c p-4" style="max-width: 640px;" data-original-type="{{ equipment.tracking_type }}" id="edit-card">
+  <form method="POST">
+    {{ form.hidden_tag() }}
+    {{ render_field(form.name) }}
+    {{ render_field(form.category) }}
+    {{ render_field(form.tracking_type, hint="By quantity: just a number. One by one: every item is its own unit, named after the item.") }}
+
+    <div id="quantity-group">
+      {{ render_field(form.quantity_total, hint="For one by one, each one becomes a unit named after the item.") }}
+    </div>
+    <p id="units-note" class="text-muted small" hidden>
+      This item is counted by its units. Add or delete units on its page.
+    </p>
+
+    <div class="d-flex flex-wrap gap-2">
+      {{ form.save(class="btn btn-brand") }}
+      <a class="btn btn-soft" href="{{ url_for('equipment.view_equipment', equipment_id=equipment.id) }}">Cancel</a>
+    </div>
+  </form>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // An item that is already tracked one by one is counted by its units, so the quantity
+  // box is hidden for it. Every other case shows the box. A disabled box is not sent.
+  const originalType = document.getElementById("edit-card").dataset.originalType;
+  const trackingType = document.getElementById("tracking_type");
+  const quantityGroup = document.getElementById("quantity-group");
+  const quantityInput = document.getElementById("quantity_total");
+  const unitsNote = document.getElementById("units-note");
+
+  const syncQuantity = () => {
+    const countedByUnits = originalType === "individual" && trackingType.value === "individual";
+    quantityGroup.hidden = countedByUnits;
+    quantityInput.disabled = countedByUnits;
+    unitsNote.hidden = !countedByUnits;
+  };
+
+  trackingType.addEventListener("change", syncQuantity);
+  syncQuantity();
+</script>
+{% endblock %}

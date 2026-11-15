@@ -1,0 +1,26 @@
+{% extends "layout_app.html" %}
+{% from "_macros.html" import render_field %}
+
+{% block title %}Edit unit - C.A.T.E.R{% endblock %}
+{% block page_title %}Edit unit{% endblock %}
+{% block page_sub %}{{ unit.equipment.name }}{% endblock %}
+
+{% block app_content %}
+<section class="card-c p-4" style="max-width: 640px;">
+  <div class="mb-3">
+    <div class="form-label">Name</div>
+    <div class="fw-bold">{{ unit.code }}</div>
+    <div class="form-text">Units are named after their equipment, so the name is not edited here.</div>
+  </div>
+
+  <form method="POST">
+    {{ form.hidden_tag() }}
+    {{ render_field(form.condition) }}
+    {{ render_field(form.status) }}
+    <div class="d-flex flex-wrap gap-2">
+      {{ form.save(class="btn btn-brand") }}
+      <a class="btn btn-soft" href="{{ url_for('equipment.view_equipment', equipment_id=unit.equipment_id) }}">Cancel</a>
+    </div>
+  </form>
+</section>
+{% endblock %}

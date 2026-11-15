@@ -1,0 +1,145 @@
+{% extends "layout_app.html" %}
+{% from "_macros.html" import icon, empty_state, render_field %}
+
+{% block title %}Equipment - C.A.T.E.R{% endblock %}
+{% block page_title %}Equipment{% endblock %}
+{% block page_sub %}Everything you own and how it is tracked{% endblock %}
+
+{% block app_content %}
+<section class="card-c">
+  <div class="card-head">
+    <h2>All equipment <span class="text-muted small fw-semibold">({{ pagination.total }})</span></h2>
+    {# The add form stays hidden until this button is pressed. #}
+    <button type="button" class="btn btn-brand btn-sm" data-bs-toggle="collapse" data-bs-target="#add-panel"
+            aria-controls="add-panel" aria-expanded="{{ 'true' if open_add else 'false' }}">
+      <span aria-hidden="true">+</span> Add equipment
+    </button>
+  </div>
+
+  {# ---------- Add form (opens on the + button, or by itself when there is an error) ---------- #}
+  <div class="collapse {{ 'show' if open_add }}" id="add-panel">
+    <div class="card-body-c" style="border-bottom:1px solid var(--cater-line);">
+      <form method="POST" action="{{ url_for('equipment.create_equipment') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="row">
+          <div class="col-12 col-md-6">{{ render_field(add_form.name) }}</div>
+          <div class="col-12 col-md-6">{{ render_field(add_form.category) }}</div>
+          <div class="col-12 col-md-6">{{ render_field(add_form.tracking_type, hint="By quantity: just a number, like 200 plates. One by one: every item is its own unit, so you can see which one is out.") }}</div>
+          <div class="col-12 col-md-6">{{ render_field(add_form.quantity_total, hint="How many do you have? For one by one, each becomes a unit named after the item, like Chafing Dish #1.") }}</div>
+        </div>
+        <div class="d-flex flex-wrap gap-2">
+          {{ add_form.save(class="btn btn-brand") }}
+          <button type="button" class="btn btn-soft" data-bs-toggle="collapse" data-bs-target="#add-panel">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  {# ---------- Search and filter (a GET form: the choices appear in the address bar) ---------- #}
+  <div class="card-body-c">
+    <form method="GET" action="{{ url_for('equipment.list_equipment') }}" class="row g-2" role="search">
+      <div class="col-12 col-md-6">
+        <label for="q" class="visually-hidden">Search by name</label>
+        <input type="search" class="form-control" id="q" name="q" value="{{ q }}" maxlength="100" placeholder="Search by name">
+      </div>
+      <div class="col-8 col-md-4">
+        <label for="filter-category" class="visually-hidden">Category</label>
+        <select class="form-select" id="filter-category" name="category">
+          <option value="">All categories</option>
+          {% for c in categories %}
+            <option value="{{ c }}" {{ 'selected' if c == category }}>{{ c }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-4 col-md-2 d-grid">
+        <button type="submit" class="btn btn-brand">Filter</button>
+      </div>
+    </form>
+    {% if q or category %}
+      <p class="small text-muted mt-2 mb-0">
+        {{ pagination.total }} result{{ '' if pagination.total == 1 else 's' }}.
+        <a href="{{ url_for('equipment.list_equipment') }}">Clear filters</a>
+      </p>
+    {% endif %}
+  </div>
+
+  {% if pagination.items %}
+  <div class="table-responsive">
+    <table class="table table-cater">
+      <thead>
+        <tr>
+          <th scope="col">Name</th>
+          <th scope="col" class="d-none d-md-table-cell">Category</th>
+          <th scope="col" class="d-none d-sm-table-cell">Tracked</th>
+          <th scope="col" class="text-end">In stock</th>
+          <th scope="col" class="text-end"><span class="visually-hidden">Actions</span></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for e in pagination.items %}
+        <tr>
+          <td class="fw-bold">
+            <a class="text-decoration-none" href="{{ url_for('equipment.view_equipment', equipment_id=e.id) }}">{{ e.name }}</a>
+            <div class="d-md-none small text-muted fw-normal">{{ e.category or '-' }}<span class="d-sm-none"> &middot; {{ 'One by one' if e.tracking_type == 'individual' else 'By quantity' }}</span></div>
+          </td>
+          <td class="d-none d-md-table-cell">{{ e.category or '-' }}</td>
+          <td class="d-none d-sm-table-cell">
+            {% if e.tracking_type == 'individual' %}
+              <span class="pill pill-yellow">One by one</span>
+            {% else %}
+              <span class="pill pill-blue">By quantity</span>
+            {% endif %}
+          </td>
+          <td class="text-end fw-bold">
+            {{ e.stock }}
+            {% if e.tracking_type == 'individual' %}
+              <div class="small text-muted fw-normal text-nowrap">{{ e.units_available }} available</div>
+            {% endif %}
+          </td>
+          <td class="text-end text-nowrap">
+            <a class="btn btn-soft btn-sm" href="{{ url_for('equipment.view_equipment', equipment_id=e.id) }}">View</a>
+            <a class="btn btn-soft btn-sm d-none d-sm-inline-block" href="{{ url_for('equipment.edit_equipment', equipment_id=e.id) }}">Edit</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% if pagination.pages > 1 %}
+  <nav class="d-flex align-items-center justify-content-between gap-2 p-3" aria-label="Pages">
+    {% if pagination.has_prev %}
+      <a class="btn btn-soft btn-sm" href="{{ url_for('equipment.list_equipment', page=pagination.prev_num, q=q, category=category) }}">Previous</a>
+    {% else %}
+      <span class="btn btn-soft btn-sm disabled" aria-disabled="true">Previous</span>
+    {% endif %}
+    <span class="small text-muted">Page {{ pagination.page }} of {{ pagination.pages }}</span>
+    {% if pagination.has_next %}
+      <a class="btn btn-soft btn-sm" href="{{ url_for('equipment.list_equipment', page=pagination.next_num, q=q, category=category) }}">Next</a>
+    {% else %}
+      <span class="btn btn-soft btn-sm disabled" aria-disabled="true">Next</span>
+    {% endif %}
+  </nav>
+  {% endif %}
+
+  {% elif q or category %}
+    {{ empty_state('package', 'No matches', 'Try a different name or choose All categories.') }}
+  {% else %}
+    {{ empty_state('package', 'No equipment yet', 'Press + Add equipment to add your first plate, glass or chafing dish.') }}
+  {% endif %}
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // Put the cursor in the first box when the add form opens.
+  const addPanel = document.getElementById("add-panel");
+  addPanel.addEventListener("shown.bs.collapse", () => {
+    const first = addPanel.querySelector("input:not([type=hidden])");
+    if (first) first.focus();
+  });
+
+  // After a failed save the form is already open: scroll it into view so the errors are seen.
+  if (addPanel.classList.contains("show")) addPanel.scrollIntoView({ block: "center" });
+</script>
+{% endblock %}

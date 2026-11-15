@@ -1,0 +1,149 @@
+{% extends "layout_app.html" %}
+{% from "_macros.html" import icon, empty_state, render_field %}
+
+{% block title %}{{ equipment.name }} - C.A.T.E.R{% endblock %}
+{% block page_title %}{{ equipment.name }}{% endblock %}
+{% block page_sub %}{{ equipment.category or 'Equipment' }}{% endblock %}
+
+{% block app_content %}
+{% set is_admin = current_user.role == 'admin' %}
+{% set status_tone = {'available': 'sage', 'out': 'yellow', 'maintenance': 'blue', 'lost': 'rose'} %}
+{% set condition_tone = {'good': 'sage', 'fair': 'yellow', 'needs repair': 'pink', 'damaged': 'rose'} %}
+
+<p class="mb-3"><a class="text-decoration-none fw-bold" href="{{ url_for('equipment.list_equipment') }}">&larr; All equipment</a></p>
+
+{# ---------- Summary ---------- #}
+<section class="card-c p-4 mb-4">
+  <div class="d-flex flex-wrap align-items-start justify-content-between gap-3">
+    <div class="min-w-0">
+      <h2 class="h4 mb-2 text-break">{{ equipment.name }}</h2>
+      <div class="d-flex flex-wrap align-items-center gap-2">
+        <span class="pill pill-sage">{{ equipment.category or 'No category' }}</span>
+        {% if equipment.tracking_type == 'individual' %}
+          <span class="pill pill-yellow">One by one</span>
+        {% else %}
+          <span class="pill pill-blue">By quantity</span>
+        {% endif %}
+      </div>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+      <a class="btn btn-soft" href="{{ url_for('equipment.edit_equipment', equipment_id=equipment.id) }}">Edit</a>
+      {% if is_admin %}
+      <form method="POST" action="{{ url_for('equipment.delete_equipment', equipment_id=equipment.id) }}"
+            onsubmit="return confirm('Delete this equipment, its units and its event assignments? This cannot be undone.');">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" class="btn btn-outline-danger">Delete</button>
+      </form>
+      {% endif %}
+    </div>
+  </div>
+
+  <hr class="my-4">
+
+  <div class="row g-3">
+    <div class="col-6 col-md-3">
+      <div class="text-muted small fw-bold text-uppercase">In stock</div>
+      <div class="h3 mb-0">{{ equipment.stock }}</div>
+    </div>
+    {% if equipment.tracking_type == 'individual' %}
+    <div class="col-6 col-md-3">
+      <div class="text-muted small fw-bold text-uppercase">Available</div>
+      <div class="h3 mb-0">{{ equipment.units_available }}</div>
+    </div>
+    {% endif %}
+    <div class="col-6 col-md-3">
+      <div class="text-muted small fw-bold text-uppercase">In events</div>
+      <div class="h3 mb-0">{{ equipment.assignment_count }}</div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="text-muted small fw-bold text-uppercase">Added</div>
+      <div class="mb-0">{{ equipment.created_at.strftime('%B %d, %Y') if equipment.created_at else '-' }}</div>
+    </div>
+  </div>
+</section>
+
+{# ---------- Units (only for items tracked one by one) ---------- #}
+{% if equipment.tracking_type == 'individual' %}
+<section class="card-c mb-4">
+  <div class="card-head">
+    <h2>Units <span class="text-muted small fw-semibold">({{ units|length }})</span></h2>
+    <button type="button" class="btn btn-brand btn-sm" data-bs-toggle="collapse" data-bs-target="#units-panel"
+            aria-controls="units-panel" aria-expanded="{{ 'true' if open_units else 'false' }}">
+      <span aria-hidden="true">+</span> Add units
+    </button>
+  </div>
+
+  <div class="collapse {{ 'show' if open_units }}" id="units-panel">
+    <div class="card-body-c" style="border-bottom:1px solid var(--cater-line);">
+      <form method="POST" action="{{ url_for('equipment.add_units', equipment_id=equipment.id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <p class="text-muted small">Each new unit is named after the item, like {{ equipment.name }} #{{ equipment.next_unit_number() }}.</p>
+        <div class="row">
+          <div class="col-6 col-md-3">{{ render_field(units_form.count) }}</div>
+          <div class="col-6 col-md-3">{{ render_field(units_form.condition) }}</div>
+        </div>
+        <div class="d-flex flex-wrap gap-2">
+          {{ units_form.add_units(class="btn btn-brand") }}
+          <button type="button" class="btn btn-soft" data-bs-toggle="collapse" data-bs-target="#units-panel">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  {% if units %}
+  <div class="table-responsive">
+    <table class="table table-cater">
+      <thead>
+        <tr>
+          <th scope="col">Unit</th>
+          <th scope="col" class="d-none d-sm-table-cell">Condition</th>
+          <th scope="col">Status</th>
+          <th scope="col" class="text-end"><span class="visually-hidden">Actions</span></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for u in units %}
+        <tr>
+          <td class="fw-bold">
+            {{ u.code }}
+            <div class="d-sm-none small fw-normal text-muted">{{ u.condition|capitalize }}</div>
+          </td>
+          <td class="d-none d-sm-table-cell"><span class="pill pill-{{ condition_tone.get(u.condition, 'blue') }}">{{ u.condition|capitalize }}</span></td>
+          <td><span class="pill pill-{{ status_tone.get(u.status, 'blue') }}">{{ u.status|capitalize }}</span></td>
+          <td class="text-end">
+            <div class="d-flex flex-column flex-sm-row justify-content-end gap-1">
+              <a class="btn btn-soft btn-sm" href="{{ url_for('equipment.edit_unit', unit_id=u.id) }}">Edit</a>
+              {% if is_admin %}
+              <form method="POST" action="{{ url_for('equipment.delete_unit', unit_id=u.id) }}" class="d-flex"
+                    onsubmit="return confirm('Delete this unit? This cannot be undone.');">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn btn-outline-danger btn-sm flex-fill">Delete</button>
+              </form>
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+    {{ empty_state('package', 'No units yet', 'Press + Add units to create them. They are named after the item.') }}
+  {% endif %}
+</section>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // Put the cursor in the first box when the units form opens, and show it after an error.
+  const unitsPanel = document.getElementById("units-panel");
+  if (unitsPanel) {
+    unitsPanel.addEventListener("shown.bs.collapse", () => {
+      const first = unitsPanel.querySelector("input:not([type=hidden])");
+      if (first) first.focus();
+    });
+    if (unitsPanel.classList.contains("show")) unitsPanel.scrollIntoView({ block: "center" });
+  }
+</script>
+{% endblock %}

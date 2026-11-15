@@ -1,221 +1,107 @@
 {% extends "layout_app.html" %}
-{% from "_macros.html" import render_field, icon %}
+{% from "_macros.html" import icon %}
 
-{% block title %}Staff Directory - C.A.T.E.R.{% endblock %}
+{% block title %}Staff - C.A.T.E.R{% endblock %}
 {% block page_title %}Staff{% endblock %}
-{% block page_sub %}Status and Details{% endblock %}
+{% block page_sub %}Who is free and who is out on an event{% endblock %}
 
 {% block app_content %}
-<div class="container-fluid py-4">
-  <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
-    <div>
-      <h1 class="h3 mb-1 text-dark fw-bold">Staff Directory</h1>
-      <p class="text-muted mb-0">Track registered staff members, availability status, and current event assignments.</p>
-    </div>
-    {% if is_admin %}
-    <div>
-      <a href="{{ url_for('staff.create_event') }}" class="btn btn-outline-primary">
-        + New Event
-      </a>
-    </div>
+
+{# ---------- Summary: each tile also works as a filter ---------- #}
+<div class="row g-3 mb-4">
+  <div class="col-4">
+    <a class="card-c p-3 d-block text-decoration-none h-100 {{ 'border border-2 border-success' if not status }}" href="{{ url_for('staff.index', q=q) }}">
+      <div class="text-muted small fw-bold text-uppercase">Total</div>
+      <div class="h3 mb-0">{{ counts.total }}</div>
+    </a>
+  </div>
+  <div class="col-4">
+    <a class="card-c p-3 d-block text-decoration-none h-100 {{ 'border border-2 border-success' if status == 'available' }}" href="{{ url_for('staff.index', q=q, status='available') }}">
+      <div class="text-muted small fw-bold text-uppercase">Available</div>
+      <div class="h3 mb-0">{{ counts['available'] }}</div>
+    </a>
+  </div>
+  <div class="col-4">
+    <a class="card-c p-3 d-block text-decoration-none h-100 {{ 'border border-2 border-success' if status == 'in event' }}" href="{{ url_for('staff.index', q=q, status='in event') }}">
+      <div class="text-muted small fw-bold text-uppercase">In event</div>
+      <div class="h3 mb-0">{{ counts['in event'] }}</div>
+    </a>
+  </div>
+</div>
+
+<section class="card-c">
+  <div class="card-head">
+    <h2>Team <span class="text-muted small fw-semibold">({{ members|length }})</span></h2>
+  </div>
+
+  {# ---------- Search (a GET form: the choices appear in the address bar) ---------- #}
+  <div class="card-body-c">
+    <form method="GET" action="{{ url_for('staff.index') }}" class="row g-2" role="search">
+      <div class="col-12 col-md-6">
+        <label for="q" class="visually-hidden">Search by name</label>
+        <input type="search" class="form-control" id="q" name="q" value="{{ q }}" maxlength="100" placeholder="Search by name">
+      </div>
+      <div class="col-8 col-md-4">
+        <label for="filter-status" class="visually-hidden">Status</label>
+        <select class="form-select" id="filter-status" name="status">
+          <option value="">All statuses</option>
+          <option value="available" {{ 'selected' if status == 'available' }}>Available</option>
+          <option value="in event" {{ 'selected' if status == 'in event' }}>In event</option>
+        </select>
+      </div>
+      <div class="col-4 col-md-2 d-grid">
+        <button type="submit" class="btn btn-brand">Filter</button>
+      </div>
+    </form>
+    {% if q or status %}
+      <p class="small text-muted mt-2 mb-0">
+        {{ members|length }} result{{ '' if members|length == 1 else 's' }}.
+        <a href="{{ url_for('staff.index') }}">Clear filters</a>
+      </p>
     {% endif %}
   </div>
 
-  <!-- Metric Badges -->
-  <div class="row g-3 mb-4">
-    <div class="col-sm-4">
-      <div class="card shadow-sm border-0 border-start border-primary border-4 p-3">
-        <div class="text-muted small text-uppercase fw-semibold">Total Staff</div>
-        <div class="fs-3 fw-bold text-dark">{{ total_staff }}</div>
-      </div>
-    </div>
-    <div class="col-sm-4">
-      <div class="card shadow-sm border-0 border-start border-success border-4 p-3">
-        <div class="text-muted small text-uppercase fw-semibold">Available</div>
-        <div class="fs-3 fw-bold text-success">{{ available_count }}</div>
-      </div>
-    </div>
-    <div class="col-sm-4">
-      <div class="card shadow-sm border-0 border-start border-info border-4 p-3">
-        <div class="text-muted small text-uppercase fw-semibold">In Event</div>
-        <div class="fs-3 fw-bold text-info">{{ in_event_count }}</div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Staff Roster Table -->
-  <div class="card shadow-sm border-0">
-    <div class="table-responsive">
-      <table class="table table-hover align-middle mb-0">
-        <thead class="table-light small text-uppercase text-muted">
-          <tr>
-            <th>Staff Member</th>
-            <th>Role</th>
-            <th>Status</th>
-            <th>Current Event</th>
-            <th class="text-end">Action</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for member in staff_members %}
-          <tr>
-            <td>
-              <div class="d-flex align-items-center">
-                <div class="avatar-circle me-3 fw-bold text-white bg-dark d-flex align-items-center justify-content-center rounded-circle" style="width: 38px; height: 38px;">
-                  {{ member.initials }}
-                </div>
-                <div>
-                  <a href="{{ url_for('staff.detail', user_id=member.id) }}" class="fw-semibold text-dark text-decoration-none">
-                    {{ member.full_name }}
-                  </a>
-                  <div class="text-muted small">{{ member.email }}</div>
-                </div>
-              </div>
-            </td>
-            <td>
-              <span class="badge {{ 'bg-dark-subtle text-dark border' if member.role == 'admin' else 'bg-secondary-subtle text-secondary border' }}">
-                {{ member.role|capitalize }}
-              </span>
-            </td>
-            <td>
-              {% if member.status == 'in event' %}
-                <span class="badge bg-primary text-white py-1 px-2">● In Event</span>
-              {% else %}
-                <span class="badge bg-success text-white py-1 px-2">✓ Available</span>
-              {% endif %}
-            </td>
-            <td>
-              {% if member.status == 'in event' and member.current_event %}
-                <!-- Clicking this triggers the equipment modal -->
-                <button type="button" 
-                        class="btn btn-sm btn-outline-primary view-event-btn" 
-                        data-event-id="{{ member.current_event.id }}"
-                        title="Click to view equipment in this event">
-                  📦 {{ member.current_event.name }}
-                </button>
-              {% else %}
-                <span class="text-muted small">— None (Available) —</span>
-              {% endif %}
-            </td>
-            <td class="text-end">
-              <div class="btn-group btn-group-sm">
-                <a href="{{ url_for('staff.detail', user_id=member.id) }}" class="btn btn-outline-secondary">View</a>
-                {% if is_admin %}
-                <a href="{{ url_for('staff.edit', user_id=member.id) }}" class="btn btn-outline-primary">Edit</a>
-                {% endif %}
-              </div>
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-  </div>
-</div>
-
-<!-- ================= MODAL: EVENT & EQUIPMENT POPUP ================= -->
-<div class="modal fade" id="eventEquipmentModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
-    <div class="modal-content border-0 shadow">
-      <div class="modal-header bg-light">
-        <div>
-          <h5 class="modal-title fw-bold text-dark" id="eventModalTitle">Event Details</h5>
-          <div class="text-muted small" id="eventModalSubtitle">Loading...</div>
+  {# ---------- One row per person. The whole row opens their details. ---------- #}
+  {% if members %}
+  <ul class="list-unstyled mb-0">
+    {% for m in members %}
+    <li style="border-top:1px solid var(--cater-line);">
+      <a class="d-flex align-items-center gap-3 p-3 text-decoration-none text-reset"
+         href="{{ url_for('staff.detail', user_id=m.id) }}">
+        <div class="avatar flex-none" aria-hidden="true">{{ m.initials }}</div>
+        <div class="min-w-0 flex-grow-1">
+          <div class="fw-bold text-truncate">
+            {{ m.full_name }}
+            {% if m.id == current_user.id %}<span class="small text-muted fw-normal">(you)</span>{% endif %}
+          </div>
+          <div class="small text-muted text-truncate">
+            {% if m.status == 'in event' and m.current_event %}
+              {{ m.current_event.name }}{% if m.current_event.venue %} &middot; {{ m.current_event.venue }}{% endif %}
+            {% else %}
+              Not assigned to an event
+            {% endif %}
+          </div>
         </div>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-      </div>
-      <div class="modal-body p-4">
-        <h6 class="text-muted small text-uppercase fw-semibold mb-2">Staff Handling This Event</h6>
-        <div id="eventModalStaffList" class="d-flex flex-wrap gap-2 mb-4"></div>
-        <hr>
-        <div class="d-flex justify-content-between align-items-center mb-3">
-          <h6 class="text-muted small text-uppercase fw-semibold mb-0">Equipment Checklist</h6>
-          <span class="badge bg-primary rounded-pill" id="eventModalEquipmentCount">0 items</span>
-        </div>
-        <div id="eventModalEquipmentContent"></div>
-      </div>
-      <div class="modal-footer bg-light d-flex justify-content-between">
-        <a href="#" id="eventModalFullLink" class="btn btn-sm btn-outline-primary">Open Full Event Page &rarr;</a>
-        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
-      </div>
-    </div>
+        {% if m.status == 'in event' %}
+          <span class="pill pill-yellow flex-none">In event</span>
+        {% else %}
+          <span class="pill pill-sage flex-none">Available</span>
+        {% endif %}
+        <span class="text-muted flex-none d-none d-sm-inline" aria-hidden="true">&rsaquo;</span>
+      </a>
+    </li>
+    {% endfor %}
+  </ul>
+  {% elif q or status %}
+  <div class="text-center text-muted p-5">
+    <p class="fw-bold mb-1">No matches</p>
+    <p class="small mb-0">Try a different name or choose All statuses.</p>
   </div>
-</div>
-
-<script>
-document.addEventListener("DOMContentLoaded", function () {
-  const modalEl = document.getElementById("eventEquipmentModal");
-  if (!modalEl) return;
-  const modal = new bootstrap.Modal(modalEl);
-
-  document.querySelectorAll(".view-event-btn").forEach(function (button) {
-    button.addEventListener("click", function () {
-      const eventId = this.dataset.eventId;
-      if (!eventId) return;
-
-      document.getElementById("eventModalTitle").textContent = "Loading event...";
-      document.getElementById("eventModalSubtitle").textContent = "Retrieving equipment checklist...";
-      document.getElementById("eventModalEquipmentContent").innerHTML = `
-        <div class="text-center py-4 text-muted"><div class="spinner-border spinner-border-sm me-2"></div>Loading equipments...</div>
-      `;
-      modal.show();
-
-      fetch(`/staff/api/event/${eventId}/equipment`)
-        .then(res => res.json())
-        .then(data => {
-          document.getElementById("eventModalTitle").textContent = data.name;
-          document.getElementById("eventModalSubtitle").innerHTML = `<strong>Venue:</strong> ${data.venue} &bull; <strong>Status:</strong> ${data.status}`;
-          document.getElementById("eventModalFullLink").href = `/staff/events/${data.event_id}`;
-          document.getElementById("eventModalEquipmentCount").textContent = `${data.total_equipment_count} unit(s)`;
-
-          // Staff badges
-          document.getElementById("eventModalStaffList").innerHTML = data.staff_members.length > 0 
-            ? data.staff_members.map(s => `<span class="badge bg-light text-dark border px-2 py-1">👤 ${s.name} (${s.role})</span>`).join(" ")
-            : '<span class="text-muted small">No staff assigned yet.</span>';
-
-          // Equipment Table
-          if (!data.equipments || data.equipments.length === 0) {
-            document.getElementById("eventModalEquipmentContent").innerHTML = `
-              <div class="alert alert-light border text-center py-4 text-muted">No equipment assigned to this event yet.</div>
-            `;
-            return;
-          }
-
-          let tableHtml = `
-            <div class="table-responsive">
-              <table class="table table-sm align-middle mb-0">
-                <thead class="table-light small text-muted">
-                  <tr>
-                    <th>Equipment</th>
-                    <th>Category</th>
-                    <th>Unit Code / Type</th>
-                    <th class="text-center">Qty</th>
-                    <th>Condition</th>
-                  </tr>
-                </thead>
-                <tbody>
-          `;
-          data.equipments.forEach(item => {
-            tableHtml += `
-              <tr>
-                <td class="fw-bold">${item.name}</td>
-                <td><span class="badge bg-light text-dark border">${item.category}</span></td>
-                <td>${item.unit_code ? `<code class="text-primary">${item.unit_code}</code>` : '<span class="text-muted small">Bulk</span>'}</td>
-                <td class="text-center fw-bold">${item.quantity}</td>
-                <td><span class="badge bg-success-subtle text-success">${item.condition}</span></td>
-              </tr>
-            `;
-          });
-          tableHtml += "</tbody></table></div>";
-          document.getElementById("eventModalEquipmentContent").innerHTML = tableHtml;
-        })
-        .catch(() => {
-          document.getElementById("eventModalEquipmentContent").innerHTML = `
-            <div class="alert alert-danger">Failed to load equipment list.</div>
-          `;
-        });
-    });
-  });
-});
-</script>
+  {% else %}
+  <div class="text-center text-muted p-5">
+    <p class="fw-bold mb-1">No staff yet</p>
+    <p class="small mb-0">People appear here after they register.</p>
+  </div>
+  {% endif %}
+</section>
 {% endblock %}

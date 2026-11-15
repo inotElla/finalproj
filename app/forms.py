@@ -1,12 +1,38 @@
 from flask_login import current_user
 from flask_wtf import FlaskForm
-from wtforms import BooleanField, EmailField, PasswordField, StringField, SubmitField, SelectField, IntegerField
-from wtforms.validators import DataRequired, Email, EqualTo, Length, ValidationError, NumberRange, Optional
+from sqlalchemy import func
+from wtforms import (
+    BooleanField,
+    EmailField,
+    IntegerField,
+    PasswordField,
+    SelectField,
+    StringField,
+    SubmitField,
+)
+from wtforms.validators import (
+    DataRequired,
+    Email,
+    EqualTo,
+    Length,
+    NumberRange,
+    Optional,
+    ValidationError,
+)
 
-from app.models import User
+from app.models import (
+    CATEGORIES,
+    EQUIPMENT_NAME_MAX,
+    MAX_UNITS_AT_ONCE,
+    UNIT_CONDITIONS,
+    UNIT_STATUSES,
+    Equipment,
+    User,
+)
 
 
 def letter_and_number(form, field):
+    """Shared rule: the password needs at least one letter and one digit."""
     pw = field.data or ""
     if not (any(c.isalpha() for c in pw) and any(c.isdigit() for c in pw)):
         raise ValidationError("Password must contain a letter and a number.")
@@ -112,26 +138,19 @@ class ChangePasswordForm(FlaskForm):
         if current_user.check_password(field.data):
             raise ValidationError("Your new password must be different from the current one.")
 
+
 # ---------- Staff & Event Management Forms ----------
 
-class StaffEditForm(FlaskForm):
-    full_name = StringField(
-        "Full name", validators=[DataRequired(), Length(min=2, max=100)]
-    )
-    role = SelectField(
-        "Role",
-        choices=[("staff", "Staff"), ("admin", "Admin")],
-        validators=[DataRequired()],
-    )
+class StaffStatusForm(FlaskForm):
+    # Admin only. Name and role are no longer editable, so they are not in this form.
     status = SelectField(
         "Status",
-        choices=[("available", "Available"), ("in event", "In Event")],
+        choices=[("available", "Available"), ("in event", "In event")],
         validators=[DataRequired()],
     )
-    event_id = SelectField(
-        "Assigned Event", coerce=int, validators=[Optional()]
-    )
-    submit = SubmitField("Save changes")
+    # coerce=int turns the chosen text ("3") into a number (3). 0 means "no event".
+    event_id = SelectField("Event", coerce=int, validators=[Optional()])
+    save_status = SubmitField("Save status")
 
 
 class EventCreateForm(FlaskForm):
@@ -158,3 +177,71 @@ class AssignEquipmentForm(FlaskForm):
     )
     notes = StringField("Notes / Instructions", validators=[Optional(), Length(max=200)])
     submit = SubmitField("Assign Equipment")
+
+
+# ---------- Equipment ----------
+
+
+class EquipmentForm(FlaskForm):
+    name = StringField(
+        "Name", validators=[DataRequired(), Length(min=2, max=EQUIPMENT_NAME_MAX)]
+    )
+    category = SelectField("Category", choices=[(c, c) for c in CATEGORIES])
+    tracking_type = SelectField(
+        "How do you track it?",
+        choices=[("bulk", "By quantity"), ("individual", "One by one")],
+    )
+    quantity_total = IntegerField(
+        "Quantity", default=1, validators=[NumberRange(min=0, max=100000)]
+    )
+    save = SubmitField("Save equipment")
+
+    def __init__(self, *args, equipment=None, **kwargs):
+        # The equipment being edited (None when adding a new one). The checks
+        # below need it so an item is not compared against itself.
+        self.equipment = equipment
+        super().__init__(*args, **kwargs)
+
+    def validate_name(self, field):
+        name = " ".join(field.data.split())
+        query = Equipment.query.filter(func.lower(Equipment.name) == name.lower())
+        if self.equipment is not None:
+            query = query.filter(Equipment.id != self.equipment.id)
+        if query.first():
+            raise ValidationError("You already have equipment with that name.")
+
+    def validate_tracking_type(self, field):
+        if self.equipment is not None and field.data == "bulk" and self.equipment.units:
+            raise ValidationError(
+                "This item has units. Delete them first, or keep it tracked one by one."
+            )
+
+    def validate_quantity_total(self, field):
+        # For "one by one", the quantity is how many separate units get created.
+        if (
+            self.tracking_type.data == "individual"
+            and field.data is not None
+            and field.data > MAX_UNITS_AT_ONCE
+        ):
+            raise ValidationError(f"You can create up to {MAX_UNITS_AT_ONCE} units at a time.")
+
+
+class AddUnitsForm(FlaskForm):
+    count = IntegerField(
+        "How many?",
+        default=1,
+        validators=[DataRequired(), NumberRange(min=1, max=MAX_UNITS_AT_ONCE)],
+    )
+    condition = SelectField(
+        "Condition", choices=[(c, c.capitalize()) for c in UNIT_CONDITIONS]
+    )
+    add_units = SubmitField("Add units")
+
+
+class UnitForm(FlaskForm):
+    # A unit's name is made from its equipment name, so only these can be changed.
+    condition = SelectField(
+        "Condition", choices=[(c, c.capitalize()) for c in UNIT_CONDITIONS]
+    )
+    status = SelectField("Status", choices=[(s, s.capitalize()) for s in UNIT_STATUSES])
+    save = SubmitField("Save unit")
