@@ -1,0 +1,207 @@
+{% extends "layout_app.html" %}
+{% from "_macros.html" import icon, render_field %}
+
+{% block title %}{{ event.name }} - C.A.T.E.R{% endblock %}
+{% block page_title %}{{ event.name }}{% endblock %}
+{% block page_sub %}{{ event.venue or 'Event' }}{% endblock %}
+
+{% block app_content %}
+{% set status_tone = {'upcoming': 'blue', 'ongoing': 'yellow', 'completed': 'sage'} %}
+
+<p class="mb-3"><a class="text-decoration-none fw-bold" href="{{ url_for('events.list_events') }}">&larr; All events</a></p>
+
+{# ---------- Summary ---------- #}
+<section class="card-c p-4 mb-4">
+  <div class="d-flex flex-wrap align-items-start justify-content-between gap-3">
+    <div class="min-w-0">
+      <h2 class="h4 mb-2 text-break">{{ event.name }}</h2>
+      <div class="d-flex flex-wrap align-items-center gap-2">
+        <span class="pill pill-{{ status_tone.get(event.status, 'blue') }}">{{ (event.status or 'ongoing')|capitalize }}</span>
+        <span class="text-muted">{{ event.venue or 'No venue listed' }}</span>
+      </div>
+    </div>
+    {% if is_admin %}
+    <div class="d-flex flex-wrap gap-2">
+      <a class="btn btn-soft" href="{{ url_for('events.edit_event', event_id=event.id) }}">Edit</a>
+      <form method="POST" action="{{ url_for('events.delete_event', event_id=event.id) }}"
+            onsubmit="return confirm('Delete this event? Its units and staff are given back. This cannot be undone.');">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" class="btn btn-outline-danger">Delete</button>
+      </form>
+    </div>
+    {% endif %}
+  </div>
+
+  <hr class="my-4">
+  <div class="row g-3">
+    <div class="col-6 col-md-4">
+      <div class="text-muted small fw-bold text-uppercase">Date</div>
+      <div class="mb-0">{{ event.event_date.strftime('%B %d, %Y') if event.event_date else 'Not set' }}</div>
+    </div>
+    <div class="col-6 col-md-4">
+      <div class="text-muted small fw-bold text-uppercase">Staff</div>
+      <div class="h3 mb-0">{{ event.staff_count }}</div>
+    </div>
+    <div class="col-6 col-md-4">
+      <div class="text-muted small fw-bold text-uppercase">Items out</div>
+      <div class="h3 mb-0">{{ event.total_equipment_count }}</div>
+    </div>
+  </div>
+</section>
+
+{# ---------- Staff on this event ---------- #}
+<section class="card-c mb-4">
+  <div class="card-head">
+    <h2>Staff <span class="text-muted small fw-semibold">({{ event.staff_count }})</span></h2>
+    {% if can_assign %}
+    <button type="button" class="btn btn-brand btn-sm" data-bs-toggle="collapse" data-bs-target="#staff-panel"
+            aria-controls="staff-panel" aria-expanded="{{ 'true' if open_staff else 'false' }}">
+      <span aria-hidden="true">+</span> Add staff
+    </button>
+    {% endif %}
+  </div>
+
+  {% if can_assign %}
+  <div class="collapse {{ 'show' if open_staff }}" id="staff-panel">
+    <div class="card-body-c" style="border-bottom:1px solid var(--cater-line);">
+      {% if staff_form.user_id.choices %}
+      <form method="POST" action="{{ url_for('events.assign_staff', event_id=event.id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="row">
+          <div class="col-12 col-md-6">{{ render_field(staff_form.user_id, hint="Only people who are available are listed.") }}</div>
+        </div>
+        <div class="d-flex flex-wrap gap-2">
+          {{ staff_form.add_staff(class="btn btn-brand") }}
+          <button type="button" class="btn btn-soft" data-bs-toggle="collapse" data-bs-target="#staff-panel">Cancel</button>
+        </div>
+      </form>
+      {% else %}
+        <p class="text-muted mb-0">Everyone is already in an event, nobody is available to add.</p>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+
+  {% if event.staff_members %}
+  <ul class="list-unstyled mb-0">
+    {% for p in event.staff_members %}
+    <li class="d-flex align-items-center gap-3 p-3" style="border-top:1px solid var(--cater-line);">
+      <div class="avatar flex-none" aria-hidden="true">{{ p.initials }}</div>
+      <div class="min-w-0 flex-grow-1 fw-bold text-truncate">
+        <a class="text-decoration-none" href="{{ url_for('staff.detail', user_id=p.id) }}">{{ p.full_name }}</a>
+      </div>
+      {% if is_admin %}
+      <form method="POST" action="{{ url_for('events.remove_staff', event_id=event.id, user_id=p.id) }}"
+            onsubmit="return confirm('Remove this person from the event?');">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" class="btn btn-outline-danger btn-sm">Remove</button>
+      </form>
+      {% endif %}
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <div class="text-center text-muted p-4">
+    <p class="fw-bold mb-1">No staff yet</p>
+    <p class="small mb-0">{{ 'Press + Add staff to put someone on this event.' if can_assign else 'Nobody is on this event.' }}</p>
+  </div>
+  {% endif %}
+</section>
+
+{# ---------- Equipment on this event ---------- #}
+<section class="card-c mb-4">
+  <div class="card-head">
+    <h2>Equipment <span class="text-muted small fw-semibold">({{ event.equipment_assignments|length }})</span></h2>
+    {% if can_assign %}
+    <button type="button" class="btn btn-brand btn-sm" data-bs-toggle="collapse" data-bs-target="#equipment-panel"
+            aria-controls="equipment-panel" aria-expanded="{{ 'true' if open_equipment else 'false' }}">
+      <span aria-hidden="true">+</span> Assign equipment
+    </button>
+    {% endif %}
+  </div>
+
+  {% if can_assign %}
+  <div class="collapse {{ 'show' if open_equipment }}" id="equipment-panel">
+    <div class="card-body-c" style="border-bottom:1px solid var(--cater-line);">
+      {% if equipment_form.equipment_id.choices %}
+      <form method="POST" action="{{ url_for('events.assign_equipment', event_id=event.id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="row">
+          <div class="col-12 col-md-6">{{ render_field(equipment_form.equipment_id, hint="Only items that are available are listed.") }}</div>
+          <div class="col-6 col-md-2">{{ render_field(equipment_form.quantity) }}</div>
+          <div class="col-12 col-md-4">{{ render_field(equipment_form.notes) }}</div>
+        </div>
+        <div class="d-flex flex-wrap gap-2">
+          {{ equipment_form.assign(class="btn btn-brand") }}
+          <button type="button" class="btn btn-soft" data-bs-toggle="collapse" data-bs-target="#equipment-panel">Cancel</button>
+        </div>
+      </form>
+      {% else %}
+        <p class="text-muted mb-0">Nothing is free to assign. Wait for other events to finish.</p>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+
+  {% if event.equipment_assignments %}
+  <div class="table-responsive">
+    <table class="table table-cater">
+      <thead>
+        <tr>
+          <th scope="col">Item</th>
+          <th scope="col" class="text-end">Qty</th>
+          <th scope="col" class="d-none d-sm-table-cell">Notes</th>
+          <th scope="col" class="text-end"><span class="visually-hidden">Actions</span></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for a in event.equipment_assignments %}
+        <tr>
+          <td class="fw-bold">
+            {% if a.equipment %}
+              <a class="text-decoration-none" href="{{ url_for('equipment.view_equipment', equipment_id=a.equipment.id) }}">{{ a.equipment.name }}</a>
+            {% else %}
+              Removed item
+            {% endif %}
+            {% if a.unit %}<div class="small fw-normal text-muted">{{ a.unit.code }}</div>{% endif %}
+            {% if a.notes %}<div class="d-sm-none small fw-normal text-muted">{{ a.notes }}</div>{% endif %}
+          </td>
+          <td class="text-end fw-bold">{{ a.quantity }}</td>
+          <td class="d-none d-sm-table-cell text-muted">{{ a.notes or '-' }}</td>
+          <td class="text-end">
+            {% if is_admin %}
+            <form method="POST" action="{{ url_for('events.remove_equipment', event_id=event.id, assignment_id=a.id) }}"
+                  onsubmit="return confirm('Remove this item from the event?');">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button type="submit" class="btn btn-outline-danger btn-sm">Remove</button>
+            </form>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="text-center text-muted p-4">
+    <p class="fw-bold mb-1">No equipment yet</p>
+    <p class="small mb-0">{{ 'Press + Assign equipment to put items on this event.' if can_assign else 'Nothing is assigned to this event.' }}</p>
+  </div>
+  {% endif %}
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // Put the cursor in the first box when a form opens.
+  document.querySelectorAll("#staff-panel, #equipment-panel").forEach((panel) => {
+    panel.addEventListener("shown.bs.collapse", () => {
+      const first = panel.querySelector("select, input:not([type=hidden])");
+      if (first) first.focus();
+    });
+  });
+  // After a failed save the form is already open: scroll it into view so the errors are seen.
+  const openPanel = document.querySelector("#staff-panel.show, #equipment-panel.show");
+  if (openPanel) openPanel.scrollIntoView({ block: "center" });
+</script>
+{% endblock %}

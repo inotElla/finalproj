@@ -9,7 +9,8 @@
     <a class="nav-link-c" href="{{ url_for('main.dashboard') }}">{{ icon('home') }}<span class="sb-text">Dashboard</span></a>
     <a class="nav-link-c" href="{{ url_for('equipment.list_equipment') }}">{{ icon('package') }}<span class="sb-text">Equipment</span></a>
   
-    <span class="nav-link-c is-soon" aria-disabled="true" title="Events (coming soon)">{{ icon('calendar') }}<span class="sb-text">Events</span><span class="soon-tag sb-text">Soon</span></span>
+    <a class="nav-link-c" href="{{ url_for('events.list_events') }}">{{ icon('calendar') }}<span class="sb-text">Events</span></a>  
+
     <span class="nav-link-c is-soon" aria-disabled="true" title="Checklists (coming soon)">{{ icon('clipboard') }}<span class="sb-text">Checklists</span><span class="soon-tag sb-text">Soon</span></span>
     <span class="nav-link-c is-soon" aria-disabled="true" title="Activity log (coming soon)">{{ icon('activity') }}<span class="sb-text">Activity log</span><span class="soon-tag sb-text">Soon</span></span>
 

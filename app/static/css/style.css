@@ -379,7 +379,7 @@ a { text-underline-offset: 3px; }
   display: flex;
   flex-direction: column;
   height: 100%;
-  padding: 1.25rem 1rem;
+  padding: 1.30rem 1rem;
   overflow-y: auto;
 }
 .sidebar-top { display: flex; align-items: center; justify-content: space-between; padding: 0 .5rem; }
@@ -396,8 +396,9 @@ a { text-underline-offset: 3px; }
 .nav-link-c {
   display: flex;
   align-items: center;
-  gap: .75rem;
+  gap: .80rem;
   padding: .65rem .8rem;
+  margin-top: .15rem;
   margin-bottom: .15rem;
   border-radius: 12px;
   color: var(--cater-brown);

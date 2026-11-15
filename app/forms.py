@@ -3,6 +3,7 @@ from flask_wtf import FlaskForm
 from sqlalchemy import func
 from wtforms import (
     BooleanField,
+    DateField,
     EmailField,
     IntegerField,
     PasswordField,
@@ -23,6 +24,7 @@ from wtforms.validators import (
 from app.models import (
     CATEGORIES,
     EQUIPMENT_NAME_MAX,
+    EVENT_STATUSES,
     MAX_UNITS_AT_ONCE,
     UNIT_CONDITIONS,
     UNIT_STATUSES,
@@ -153,30 +155,33 @@ class StaffStatusForm(FlaskForm):
     save_status = SubmitField("Save status")
 
 
-class EventCreateForm(FlaskForm):
+class EventForm(FlaskForm):
     name = StringField(
         "Event name", validators=[DataRequired(), Length(min=2, max=150)]
     )
-    venue = StringField("Venue / Location", validators=[Optional(), Length(max=200)])
+    venue = StringField("Venue / location", validators=[Optional(), Length(max=200)])
+    # DateField draws a date picker. Optional(): the date can be left empty.
+    event_date = DateField("Date", validators=[Optional()])
     status = SelectField(
         "Status",
-        choices=[
-            ("ongoing", "Ongoing"),
-            ("upcoming", "Upcoming"),
-            ("completed", "Completed"),
-        ],
-        default="ongoing",
+        choices=[(s, s.capitalize()) for s in EVENT_STATUSES],
+        default="upcoming",
     )
-    submit = SubmitField("Create Event")
+    save = SubmitField("Save event")
 
 
 class AssignEquipmentForm(FlaskForm):
     equipment_id = SelectField("Equipment", coerce=int, validators=[DataRequired()])
     quantity = IntegerField(
-        "Quantity", default=1, validators=[DataRequired(), NumberRange(min=1)]
+        "Quantity", default=1, validators=[DataRequired(), NumberRange(min=1, max=100000)]
     )
-    notes = StringField("Notes / Instructions", validators=[Optional(), Length(max=200)])
-    submit = SubmitField("Assign Equipment")
+    notes = StringField("Notes", validators=[Optional(), Length(max=200)])
+    assign = SubmitField("Assign equipment")
+
+
+class AssignStaffForm(FlaskForm):
+    user_id = SelectField("Staff member", coerce=int, validators=[DataRequired()])
+    add_staff = SubmitField("Add to event")
 
 
 # ---------- Equipment ----------
@@ -245,3 +250,4 @@ class UnitForm(FlaskForm):
     )
     status = SelectField("Status", choices=[(s, s.capitalize()) for s in UNIT_STATUSES])
     save = SubmitField("Save unit")
+

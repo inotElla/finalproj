@@ -1,0 +1,22 @@
+{% extends "layout_app.html" %}
+{% from "_macros.html" import render_field %}
+
+{% block title %}Edit event - C.A.T.E.R{% endblock %}
+{% block page_title %}Edit event{% endblock %}
+{% block page_sub %}{{ event.name }}{% endblock %}
+
+{% block app_content %}
+<section class="card-c p-4" style="max-width: 640px;">
+  <form method="POST">
+    {{ form.hidden_tag() }}
+    {{ render_field(form.name) }}
+    {{ render_field(form.venue) }}
+    {{ render_field(form.event_date) }}
+    {{ render_field(form.status, hint="Setting an event to Completed returns its one-by-one units to the shelf and frees its staff.") }}
+    <div class="d-flex flex-wrap gap-2">
+      {{ form.save(class="btn btn-brand") }}
+      <a class="btn btn-soft" href="{{ url_for('events.view_event', event_id=event.id) }}">Cancel</a>
+    </div>
+  </form>
+</section>
+{% endblock %}

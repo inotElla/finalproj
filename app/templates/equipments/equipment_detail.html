@@ -47,10 +47,9 @@
     </div>
     {% if equipment.tracking_type == 'individual' %}
     <div class="col-6 col-md-3">
-      <div class="text-muted small fw-bold text-uppercase">Available</div>
-      <div class="h3 mb-0">{{ equipment.units_available }}</div>
-    </div>
-    {% endif %}
+  <div class="text-muted small fw-bold text-uppercase">Available</div>
+  <div class="h3 mb-0">{{ equipment.free_quantity }}</div>
+</div>
     <div class="col-6 col-md-3">
       <div class="text-muted small fw-bold text-uppercase">In events</div>
       <div class="h3 mb-0">{{ equipment.assignment_count }}</div>
@@ -128,7 +127,7 @@
     </table>
   </div>
   {% else %}
-    {{ empty_state('package', 'No units yet', 'Press + Add units to create them. They are named after the item.') }}
+    {{ empty_state('package', 'No units yet', 'Press + Add units to create them.') }}
   {% endif %}
 </section>
 {% endif %}
@@ -136,7 +135,6 @@
 
 {% block scripts %}
 <script>
-  // Put the cursor in the first box when the units form opens, and show it after an error.
   const unitsPanel = document.getElementById("units-panel");
   if (unitsPanel) {
     unitsPanel.addEventListener("shown.bs.collapse", () => {

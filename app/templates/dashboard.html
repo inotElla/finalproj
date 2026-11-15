@@ -38,11 +38,11 @@
   </div>
   <div class="col-12 col-xl-4">
     <div class="card-c stat">
-      <div class="stat-icon tone-pink">{{ icon('alert', 24) }}</div>
+      <div class="stat-icon tone-blue">{{ icon('calendar', 24) }}</div>
       <div>
-        <div class="stat-value">&mdash;</div>
-        <div class="stat-label">Overdue pick-ups</div>
-        <small class="text-muted">Pickup due dates aren't tracked yet</small>
+        <div class="stat-value">{{ stats.events }}</div>
+        <div class="stat-label">Active events</div>
+        <small class="text-muted">Upcoming and ongoing</small>
       </div>
     </div>
   </div>
@@ -68,13 +68,12 @@
               <div class="staff-email">{{ u.email }}</div>
             </div>
             <div class="text-end">
-              <span class="pill pill-{{ 'yellow' if u.role == 'admin' else 'sage' }}">{{ u.role|capitalize }}</span>
+              <span class="pill pill-{{ 'yellow' if u.status == 'in event' else 'sage' }}">{{ 'In event' if u.status == 'in event' else 'Available' }}</span>
               <div class="staff-joined">Joined {{ u.created_at|localtime('%b %d, %Y') }}</div>
             </div>
           </li>
           {% endfor %}
         </ul>
-        <p class="staff-note">New accounts register as staff. Managing roles comes next.</p>
         {% else %}
           {{ empty_state('users', 'No staff yet', 'People who register will appear here.') }}
         {% endif %}
@@ -83,6 +82,38 @@
   </div>
 </div>
 {% endif %}
+
+{# ---------- Active events (display only) ---------- #}
+<div class="row g-3 mb-4">
+  <div class="col-12">
+    <section class="card-c h-100">
+      <div class="card-head">
+        <h2>Active events</h2>
+        <span class="text-muted small fw-semibold">{{ stats.events }} upcoming or ongoing</span>
+      </div>
+      {% if events %}
+      <ul class="list-unstyled mb-0">
+        {% for e in events %}
+        <li class="d-flex align-items-center gap-3 p-3" style="border-top:1px solid var(--cater-line);">
+          <div class="min-w-0 flex-grow-1">
+            <div class="fw-bold text-truncate">{{ e.name }}</div>
+            <div class="small text-muted text-truncate">
+              {{ e.venue or 'No venue' }}{% if e.event_date %} &middot; {{ e.event_date.strftime('%b %d, %Y') }}{% endif %}
+            </div>
+          </div>
+          <span class="small text-muted flex-none d-none d-sm-inline">{{ e.staff_count }} staff &middot; {{ e.total_equipment_count }} items</span>
+          <span class="pill {{ 'pill-yellow' if e.status == 'ongoing' else 'pill-blue' }} flex-none">{{ (e.status or 'ongoing')|capitalize }}</span>
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <div class="card-body-c">
+        {{ empty_state('calendar', 'No active events', 'Upcoming and ongoing events show here.') }}
+      </div>
+      {% endif %}
+    </section>
+  </div>
+</div>
 
 <div class="row g-3 mb-4">
   <div class="col-xl-7">

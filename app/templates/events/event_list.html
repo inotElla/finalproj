@@ -1,0 +1,151 @@
+{% extends "layout_app.html" %}
+{% from "_macros.html" import icon, render_field %}
+
+{% block title %}Events - C.A.T.E.R{% endblock %}
+{% block page_title %}Events{% endblock %}
+{% block page_sub %}Jobs, who is working them and what equipment goes out{% endblock %}
+
+{% block app_content %}
+{% set status_tone = {'upcoming': 'blue', 'ongoing': 'yellow', 'completed': 'sage'} %}
+
+<section class="card-c">
+  <div class="card-head">
+    <h2>All events <span class="text-muted small fw-semibold">({{ pagination.total }})</span></h2>
+    {# Only admins create events. Staff just see the list. #}
+    {% if is_admin %}
+    <button type="button" class="btn btn-brand btn-sm" data-bs-toggle="collapse" data-bs-target="#add-panel"
+            aria-controls="add-panel" aria-expanded="{{ 'true' if open_add else 'false' }}">
+      <span aria-hidden="true">+</span> Add event
+    </button>
+    {% endif %}
+  </div>
+
+  {% if is_admin %}
+  <div class="collapse {{ 'show' if open_add }}" id="add-panel">
+    <div class="card-body-c" style="border-bottom:1px solid var(--cater-line);">
+      <form method="POST" action="{{ url_for('events.create_event') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="row">
+          <div class="col-12 col-md-6">{{ render_field(add_form.name) }}</div>
+          <div class="col-12 col-md-6">{{ render_field(add_form.venue) }}</div>
+          <div class="col-12 col-md-6">{{ render_field(add_form.event_date) }}</div>
+          <div class="col-12 col-md-6">{{ render_field(add_form.status) }}</div>
+        </div>
+        <div class="d-flex flex-wrap gap-2">
+          {{ add_form.save(class="btn btn-brand") }}
+          <button type="button" class="btn btn-soft" data-bs-toggle="collapse" data-bs-target="#add-panel">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+  {% endif %}
+
+  {# ---------- Search and filter ---------- #}
+  <div class="card-body-c">
+    <form method="GET" action="{{ url_for('events.list_events') }}" class="row g-2" role="search">
+      <div class="col-12 col-md-6">
+        <label for="q" class="visually-hidden">Search by name or venue</label>
+        <input type="search" class="form-control" id="q" name="q" value="{{ q }}" maxlength="100" placeholder="Search by name or venue">
+      </div>
+      <div class="col-8 col-md-4">
+        <label for="filter-status" class="visually-hidden">Status</label>
+        <select class="form-select" id="filter-status" name="status">
+          <option value="">All statuses</option>
+          {% for s in statuses %}
+            <option value="{{ s }}" {{ 'selected' if s == status }}>{{ s|capitalize }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-4 col-md-2 d-grid">
+        <button type="submit" class="btn btn-brand">Filter</button>
+      </div>
+    </form>
+    {% if q or status %}
+      <p class="small text-muted mt-2 mb-0">
+        {{ pagination.total }} result{{ '' if pagination.total == 1 else 's' }}.
+        <a href="{{ url_for('events.list_events') }}">Clear filters</a>
+      </p>
+    {% endif %}
+  </div>
+
+  {% if pagination.items %}
+  <div class="table-responsive">
+    <table class="table table-cater">
+      <thead>
+        <tr>
+          <th scope="col">Event</th>
+          <th scope="col" class="d-none d-md-table-cell">Date</th>
+          <th scope="col">Status</th>
+          <th scope="col" class="text-end d-none d-sm-table-cell">Staff</th>
+          <th scope="col" class="text-end d-none d-sm-table-cell">Items</th>
+          <th scope="col" class="text-end"><span class="visually-hidden">Actions</span></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for e in pagination.items %}
+        <tr>
+          <td class="fw-bold">
+            <a class="text-decoration-none" href="{{ url_for('events.view_event', event_id=e.id) }}">{{ e.name }}</a>
+            <div class="small text-muted fw-normal">
+              {{ e.venue or 'No venue' }}
+              <span class="d-md-none">
+                {% if e.event_date %} &middot; {{ e.event_date.strftime('%b %d, %Y') }}{% endif %}
+              </span>
+            </div>
+          </td>
+          <td class="d-none d-md-table-cell">{{ e.event_date.strftime('%b %d, %Y') if e.event_date else '-' }}</td>
+          <td><span class="pill pill-{{ status_tone.get(e.status, 'blue') }}">{{ (e.status or 'ongoing')|capitalize }}</span></td>
+          <td class="text-end d-none d-sm-table-cell">{{ e.staff_count }}</td>
+          <td class="text-end d-none d-sm-table-cell">{{ e.total_equipment_count }}</td>
+          <td class="text-end text-nowrap">
+            <a class="btn btn-soft btn-sm" href="{{ url_for('events.view_event', event_id=e.id) }}">View</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% if pagination.pages > 1 %}
+  <nav class="d-flex align-items-center justify-content-between gap-2 p-3" aria-label="Pages">
+    {% if pagination.has_prev %}
+      <a class="btn btn-soft btn-sm" href="{{ url_for('events.list_events', page=pagination.prev_num, q=q, status=status) }}">Previous</a>
+    {% else %}
+      <span class="btn btn-soft btn-sm disabled" aria-disabled="true">Previous</span>
+    {% endif %}
+    <span class="small text-muted">Page {{ pagination.page }} of {{ pagination.pages }}</span>
+    {% if pagination.has_next %}
+      <a class="btn btn-soft btn-sm" href="{{ url_for('events.list_events', page=pagination.next_num, q=q, status=status) }}">Next</a>
+    {% else %}
+      <span class="btn btn-soft btn-sm disabled" aria-disabled="true">Next</span>
+    {% endif %}
+  </nav>
+  {% endif %}
+
+  {% elif q or status %}
+  <div class="text-center text-muted p-5">
+    <p class="fw-bold mb-1">No matches</p>
+    <p class="small mb-0">Try a different name or choose All statuses.</p>
+  </div>
+  {% else %}
+  <div class="text-center text-muted p-5">
+    <p class="fw-bold mb-1">No events yet</p>
+    <p class="small mb-0">{{ 'Press + Add event to create the first one.' if is_admin else 'An admin will add events here.' }}</p>
+  </div>
+  {% endif %}
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const addPanel = document.getElementById("add-panel");
+  if (addPanel) {
+    addPanel.addEventListener("shown.bs.collapse", () => {
+      const first = addPanel.querySelector("input:not([type=hidden])");
+      if (first) first.focus();
+    });
+    // After a failed save the form is already open: scroll it into view so the errors are seen.
+    if (addPanel.classList.contains("show")) addPanel.scrollIntoView({ block: "center" });
+  }
+</script>
+{% endblock %}

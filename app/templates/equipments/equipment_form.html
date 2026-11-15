@@ -11,7 +11,7 @@
     {{ form.hidden_tag() }}
     {{ render_field(form.name) }}
     {{ render_field(form.category) }}
-    {{ render_field(form.tracking_type, hint="By quantity: just a number. One by one: every item is its own unit, named after the item.") }}
+    {{ render_field(form.tracking_type, hint="By quantity: just a number. One by one: every item is its own unit.") }}
 
     <div id="quantity-group">
       {{ render_field(form.quantity_total, hint="For one by one, each one becomes a unit named after the item.") }}
@@ -30,8 +30,6 @@
 
 {% block scripts %}
 <script>
-  // An item that is already tracked one by one is counted by its units, so the quantity
-  // box is hidden for it. Every other case shows the box. A disabled box is not sent.
   const originalType = document.getElementById("edit-card").dataset.originalType;
   const trackingType = document.getElementById("tracking_type");
   const quantityGroup = document.getElementById("quantity-group");

@@ -1,11 +1,10 @@
 import re
 from datetime import datetime, timezone
+from sqlalchemy import func
 from flask_login import UserMixin
 from werkzeug.security import check_password_hash, generate_password_hash
 from app import db, login_manager
 
-# Fixed lists used by the forms and the templates. Keeping them in one place means
-# a new category or status is added here only.
 CATEGORIES = [
     "Tableware",
     "Glassware",
@@ -18,10 +17,8 @@ CATEGORIES = [
 ]
 UNIT_CONDITIONS = ["good", "fair", "needs repair", "damaged"]
 UNIT_STATUSES = ["available", "out", "maintenance", "lost"]
+EVENT_STATUSES = ["upcoming", "ongoing", "completed"]
 
-# A unit is named after its equipment: "Chafing Dish #1", "Chafing Dish #2", ...
-# The equipment name is limited to 40 characters (see forms.py) so the unit name
-# always fits the 50-character column.
 EQUIPMENT_NAME_MAX = 40
 MAX_UNITS_AT_ONCE = 500
 
@@ -116,6 +113,29 @@ class Event(BaseModel):
     def total_equipment_count(self):
         return sum(item.quantity for item in self.equipment_assignments)
 
+    @property
+    def staff_count(self):
+        return len(self.staff_members)
+
+    def release(self):
+        """Give everything back: one-by-one units become available again and every
+        staff member in this event becomes available."""
+        for item in self.equipment_assignments:
+            if item.unit is not None and item.unit.status == "out":
+                item.unit.status = "available"
+        # list(...) makes a copy: we change each person while looping over them.
+        for person in list(self.staff_members):
+            person.status = "available"
+            person.current_event_id = None
+        db.session.commit()
+
+    def delete(self):
+        # A completed event already gave everything back, and its old units may be
+        # out on another event now, so only active events release.
+        if self.status != "completed":
+            self.release()
+        super().delete()
+
 
 class EventEquipment(BaseModel):
     __tablename__ = 'event_equipment'
@@ -129,6 +149,17 @@ class EventEquipment(BaseModel):
     event = db.relationship("Event", back_populates="equipment_assignments")
     equipment = db.relationship("Equipment")
     unit = db.relationship("EquipmentUnit")
+
+    def delete(self):
+        # Taking a unit off an active event puts it back on the shelf.
+        if (
+            self.unit is not None
+            and self.unit.status == "out"
+            and self.event is not None
+            and self.event.status != "completed"
+        ):
+            self.unit.status = "available"
+        super().delete()
 
 
 class Equipment(BaseModel):
@@ -158,6 +189,24 @@ class Equipment(BaseModel):
     def assignment_count(self):
         """How many event assignments use this equipment."""
         return EventEquipment.query.filter_by(equipment_id=self.id).count()
+
+    @property
+    def assigned_quantity(self):
+        """How many are promised to events that are not finished (for by-quantity items)."""
+        total = (
+            db.session.query(func.coalesce(func.sum(EventEquipment.quantity), 0))
+            .join(Event, EventEquipment.event_id == Event.id)
+            .filter(EventEquipment.equipment_id == self.id, Event.status != "completed")
+            .scalar()
+        )
+        return int(total or 0)
+
+    @property
+    def free_quantity(self):
+        """How many can still be given to an event right now."""
+        if self.tracking_type == "bulk":
+            return max(self.stock - self.assigned_quantity, 0)
+        return self.units_available
 
     def next_unit_number(self):
         # Look at the numbers already used ("... #3") and continue after the highest,
@@ -217,3 +266,4 @@ class EquipmentUnit(BaseModel):
 @login_manager.user_loader
 def load_user(user_id):
     return db.session.get(User, int(user_id))
+

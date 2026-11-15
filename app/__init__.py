@@ -25,7 +25,8 @@ def create_app():
     from app import models  # noqa: F401
 
     from app.routes.auth import auth_bp
-    from app.routes.equipment import equipment_bp   # <-- new
+    from app.routes.equipment import equipment_bp
+    from app.routes.events import events_bp         # <-- new
     from app.routes.main import main_bp
     from app.routes.profile import profile_bp
     from app.routes.staff import staff_bp
@@ -34,7 +35,8 @@ def create_app():
     app.register_blueprint(auth_bp)
     app.register_blueprint(profile_bp)
     app.register_blueprint(staff_bp)
-    app.register_blueprint(equipment_bp)            # <-- new
+    app.register_blueprint(equipment_bp)
+    app.register_blueprint(events_bp)               # <-- new
 
     with app.app_context():
         db.create_all()
@@ -53,3 +55,4 @@ def create_app():
             db.session.rollback()  # Column already exists, ignore
 
     return app
+

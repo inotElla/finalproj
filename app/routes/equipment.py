@@ -13,7 +13,6 @@ PER_PAGE = 10
 
 
 def clean_name(text):
-    # " ".join(text.split()) collapses extra spaces: "  Gold   Spoons " -> "Gold Spoons"
     return " ".join(text.split())
 
 
@@ -26,7 +25,6 @@ def plural(count, word):
 
 def render_list(add_form=None, open_add=False):
     """The equipment list. open_add=True starts with the add form open (after an error)."""
-    # request.args holds the ?q=...&category=...&page=... part of the address.
     q = request.args.get("q", "").strip()[:100]
     category = request.args.get("category", "")
     page = request.args.get("page", 1, type=int)  # type=int: "abc" falls back to 1
@@ -58,7 +56,6 @@ def render_list(add_form=None, open_add=False):
 
 
 def render_detail(equipment, units_form=None, open_units=False):
-    """The equipment page: its details and, for one-by-one items, its units."""
     units = (
         EquipmentUnit.query.filter_by(equipment_id=equipment.id)
         .order_by(EquipmentUnit.code)
