@@ -15,6 +15,7 @@ from flask_mail import Message
 from itsdangerous import BadData, URLSafeTimedSerializer
 
 from app import db, mail
+from app.activity import log_activity
 from app.forms import (
     LoginForm,
     PasswordResetRequestForm,
@@ -184,6 +185,7 @@ def register():
         )
         user.set_password(form.password.data)
         user.save()
+        log_activity("created", "account", f"registered a new {role} account", actor=user)
         flash("Account created. You can now log in.", "success")
         return redirect(url_for("auth.login"))
 
@@ -202,6 +204,7 @@ def login():
 
         if user and user.check_password(form.password.data):
             login_user(user, remember=form.remember.data)
+            log_activity("login", "account", "logged in")
             next_page = request.args.get("next")
             if is_safe_redirect(next_page):
                 return redirect(next_page)
@@ -215,6 +218,8 @@ def login():
 @auth_bp.route("/logout", methods=["POST"])
 @login_required
 def logout():
+    log_activity("logout", "account", "logged out")  # before logout_user: we still know who it is
     logout_user()
     flash("You have been logged out.", "info")
     return redirect(url_for("auth.login"))
+

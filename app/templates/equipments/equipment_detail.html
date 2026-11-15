@@ -40,16 +40,15 @@
 
   <hr class="my-4">
 
-  <div class="row g-3">
+    <div class="row g-3">
     <div class="col-6 col-md-3">
       <div class="text-muted small fw-bold text-uppercase">In stock</div>
       <div class="h3 mb-0">{{ equipment.stock }}</div>
     </div>
-    {% if equipment.tracking_type == 'individual' %}
     <div class="col-6 col-md-3">
-  <div class="text-muted small fw-bold text-uppercase">Available</div>
-  <div class="h3 mb-0">{{ equipment.free_quantity }}</div>
-</div>
+      <div class="text-muted small fw-bold text-uppercase">Available</div>
+      <div class="h3 mb-0">{{ equipment.free_quantity }}</div>
+    </div>
     <div class="col-6 col-md-3">
       <div class="text-muted small fw-bold text-uppercase">In events</div>
       <div class="h3 mb-0">{{ equipment.assignment_count }}</div>

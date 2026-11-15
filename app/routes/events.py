@@ -6,6 +6,7 @@ from sqlalchemy import or_
 from sqlalchemy.exc import SQLAlchemyError
 
 from app import db
+from app.activity import log_activity
 from app.decorators import admin_required
 from app.forms import AssignEquipmentForm, AssignStaffForm, EventForm
 from app.models import (
@@ -141,6 +142,7 @@ def create_event():
         )
         event.save()
         flash(f'Event "{event.name}" was created.', "success")
+        log_activity("created", "event", f'created event "{event.name}"')
         return redirect(url_for("events.view_event", event_id=event.id))
 
     return render_list(add_form=form, open_add=True)
@@ -174,8 +176,10 @@ def edit_event(event_id):
 
         if finishing:
             flash("Event completed. Its units are available again and its staff are free.", "success")
+            log_activity("completed", "event", f'completed event "{event.name}"')
         else:
             flash("Event updated.", "success")
+            log_activity("updated", "event", f'updated event "{event.name}"')
         return redirect(url_for("events.view_event", event_id=event.id))
 
     return render_template("events/event_form.html", form=form, event=event)
@@ -188,6 +192,7 @@ def delete_event(event_id):
     name = event.name
     event.delete()  # gives units and staff back first (see models.py)
     flash(f'Event "{name}" was deleted.', "success")
+    log_activity("deleted", "event", f'deleted event "{name}"')
     return redirect(url_for("events.list_events"))
 
 
@@ -218,8 +223,13 @@ def assign_item(event, equipment, quantity, notes):
             )
     else:
         # By-quantity items: add to the existing line instead of making a second one.
-        line = EventEquipment.query.filter_by(
-            event_id=event.id, equipment_id=equipment.id
+        # Only an untouched line (not packed, not returned) is added to. Otherwise the
+        # new items get their own line, so the checklist stays correct.
+        line = EventEquipment.query.filter(
+            EventEquipment.event_id == event.id,
+            EventEquipment.equipment_id == equipment.id,
+            EventEquipment.packed.is_(False),
+            EventEquipment.returned_quantity.is_(None),
         ).first()
         if line:
             line.quantity = (line.quantity or 0) + quantity
@@ -264,6 +274,7 @@ def assign_equipment(event_id):
                 flash("Could not assign the equipment. Please try again.", "danger")
                 return render_detail(event, equipment_form=form, open_equipment=True)
             flash(f"Assigned {quantity} x {equipment.name} to this event.", "success")
+            log_activity("assigned", "event", f'assigned {quantity} x {equipment.name} to "{event.name}"')
             return redirect(url_for("events.view_event", event_id=event.id))
 
     return render_detail(event, equipment_form=form, open_equipment=True)
@@ -276,8 +287,10 @@ def remove_equipment(event_id, assignment_id):
     if line.event_id != event_id:  # the line belongs to some other event
         abort(404)
     name = line.equipment.name if line.equipment else "Item"
+    event_name = line.event.name if line.event else "an event"
     line.delete()  # a one-by-one unit becomes available again (see models.py)
     flash(f"{name} was removed from this event.", "success")
+    log_activity("removed", "event", f'removed {name} from "{event_name}"')
     return redirect(url_for("events.view_event", event_id=event_id))
 
 
@@ -299,6 +312,7 @@ def assign_staff(event_id):
         person.current_event_id = event.id
         person.save()
         flash(f"{person.full_name} was added to this event.", "success")
+        log_activity("assigned", "event", f'added {person.full_name} to "{event.name}"')
         return redirect(url_for("events.view_event", event_id=event.id))
 
     return render_detail(event, staff_form=form, open_staff=True)
@@ -310,8 +324,10 @@ def remove_staff(event_id, user_id):
     person = db.get_or_404(User, user_id)
     if person.current_event_id != event_id:  # not in this event
         abort(404)
+    event_name = person.current_event.name if person.current_event else "an event"
     person.status = "available"
     person.current_event_id = None
     person.save()
     flash(f"{person.full_name} was removed from this event.", "success")
+    log_activity("removed", "event", f'removed {person.full_name} from "{event_name}"')
     return redirect(url_for("events.view_event", event_id=event_id))

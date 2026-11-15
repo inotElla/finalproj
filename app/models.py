@@ -5,6 +5,8 @@ from flask_login import UserMixin
 from werkzeug.security import check_password_hash, generate_password_hash
 from app import db, login_manager
 
+# Fixed lists used by the forms and the templates. Keeping them in one place means
+# a new category or status is added here only.
 CATEGORIES = [
     "Tableware",
     "Glassware",
@@ -18,7 +20,12 @@ CATEGORIES = [
 UNIT_CONDITIONS = ["good", "fair", "needs repair", "damaged"]
 UNIT_STATUSES = ["available", "out", "maintenance", "lost"]
 EVENT_STATUSES = ["upcoming", "ongoing", "completed"]
+# What the activity log can be filtered by.
+ACTIVITY_TYPES = ["equipment", "unit", "event", "checklist", "staff", "account"]
 
+# A unit is named after its equipment: "Chafing Dish #1", "Chafing Dish #2", ...
+# The equipment name is limited to 40 characters (see forms.py) so the unit name
+# always fits the 50-character column.
 EQUIPMENT_NAME_MAX = 40
 MAX_UNITS_AT_ONCE = 500
 
@@ -117,6 +124,28 @@ class Event(BaseModel):
     def staff_count(self):
         return len(self.staff_members)
 
+    # ----- Checklist progress -----
+
+    @property
+    def line_count(self):
+        return len(self.equipment_assignments)
+
+    @property
+    def packed_count(self):
+        return sum(1 for line in self.equipment_assignments if line.packed)
+
+    @property
+    def returned_count(self):
+        return sum(1 for line in self.equipment_assignments if line.is_returned)
+
+    @property
+    def missing_total(self):
+        return sum(line.missing for line in self.equipment_assignments)
+
+    @property
+    def all_returned(self):
+        return self.line_count > 0 and self.returned_count == self.line_count
+
     def release(self):
         """Give everything back: one-by-one units become available again and every
         staff member in this event becomes available."""
@@ -146,9 +175,26 @@ class EventEquipment(BaseModel):
     quantity = db.Column(db.Integer, default=1)
     notes = db.Column(db.String(200), nullable=True)
 
+    # Checklist: was it packed before leaving, and how many came back?
+    packed = db.Column(db.Boolean, nullable=False, default=False)
+    # None = not returned yet. 0 up to `quantity` = how many actually came back.
+    returned_quantity = db.Column(db.Integer, nullable=True)
+    issue_note = db.Column(db.String(200), nullable=True)
+
     event = db.relationship("Event", back_populates="equipment_assignments")
     equipment = db.relationship("Equipment")
     unit = db.relationship("EquipmentUnit")
+
+    @property
+    def is_returned(self):
+        return self.returned_quantity is not None
+
+    @property
+    def missing(self):
+        """How many did not come back (0 until a return is recorded)."""
+        if self.returned_quantity is None:
+            return 0
+        return max((self.quantity or 0) - self.returned_quantity, 0)
 
     def delete(self):
         # Taking a unit off an active event puts it back on the shelf.
@@ -194,7 +240,12 @@ class Equipment(BaseModel):
     def assigned_quantity(self):
         """How many are promised to events that are not finished (for by-quantity items)."""
         total = (
-            db.session.query(func.coalesce(func.sum(EventEquipment.quantity), 0))
+            db.session.query(func.coalesce(
+                    func.sum(
+                        EventEquipment.quantity - func.coalesce(EventEquipment.returned_quantity, 0)
+                    ),
+                    0,
+                ))
             .join(Event, EventEquipment.event_id == Event.id)
             .filter(EventEquipment.equipment_id == self.id, Event.status != "completed")
             .scalar()
@@ -261,6 +312,19 @@ class EquipmentUnit(BaseModel):
         # Events that used this exact unit keep their line, just without the unit.
         EventEquipment.query.filter_by(unit_id=self.id).update({"unit_id": None})
         super().delete()
+
+
+class ActivityLog(BaseModel):
+    """One line of history: who did what, and when (created_at comes from BaseModel)."""
+
+    __tablename__ = "activity_log"
+
+    # SET NULL: if the person is deleted, the line stays, it just loses the link.
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id", ondelete="SET NULL"), nullable=True)
+    user_name = db.Column(db.String(150), nullable=False, default="System")
+    action = db.Column(db.String(30), nullable=False)
+    entity_type = db.Column(db.String(30), nullable=False)
+    summary = db.Column(db.String(255), nullable=False)
 
 
 @login_manager.user_loader

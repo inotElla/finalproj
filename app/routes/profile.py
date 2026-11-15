@@ -6,6 +6,7 @@ from itsdangerous import BadData, URLSafeTimedSerializer
 from sqlalchemy.exc import IntegrityError
 
 from app import db
+from app.activity import log_activity
 from app.emailer import external_url, send_email
 from app.forms import ChangeEmailForm, ChangePasswordForm, ProfileNameForm
 from app.models import User
@@ -104,6 +105,7 @@ def update_name():
         current_user.full_name = " ".join(form.full_name.data.split())
         current_user.save()
         flash("Your name has been updated.", "success")
+        log_activity("updated", "account", f'changed their name to "{current_user.full_name}"')
         return redirect(url_for("profile.show_profile"))
 
     return render_profile(name_form=form, open_section="name")
@@ -189,6 +191,7 @@ def confirm_email(token):
         "If this was not you, contact an administrator right away.",
     )
     flash("Your email has been updated.", "success")
+    log_activity("updated", "account", "changed their email address")
     return redirect(url_for("profile.show_profile"))
 
 
@@ -217,6 +220,8 @@ def update_password():
             "and tell an administrator.",
         )
         flash("Your password has been changed.", "success")
+        log_activity("updated", "account", "changed their password")
         return redirect(url_for("profile.show_profile"))
 
     return render_profile(password_form=form, open_section="password")
+

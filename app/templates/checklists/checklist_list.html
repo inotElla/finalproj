@@ -1,0 +1,62 @@
+{% extends "layout_app.html" %}
+{% from "_macros.html" import icon %}
+
+{% block title %}Checklists - C.A.T.E.R{% endblock %}
+{% block page_title %}Checklists{% endblock %}
+{% block page_sub %}Pack the equipment going out, check what comes back{% endblock %}
+
+{% block app_content %}
+{# One list is used for both sections, so the row layout is written once. #}
+{% macro event_rows(events) %}
+  {% set status_tone = {'upcoming': 'blue', 'ongoing': 'yellow', 'completed': 'sage'} %}
+  <ul class="list-unstyled mb-0">
+    {% for e in events %}
+    <li style="border-top:1px solid var(--cater-line);">
+      <a class="d-flex align-items-center gap-3 p-3 text-decoration-none text-reset"
+         href="{{ url_for('checklists.view_checklist', event_id=e.id) }}">
+        <div class="min-w-0 flex-grow-1">
+          <div class="fw-bold text-truncate">{{ e.name }}</div>
+          <div class="small text-muted text-truncate">
+            {{ e.venue or 'No venue' }}{% if e.event_date %} &middot; {{ e.event_date.strftime('%b %d, %Y') }}{% endif %}
+          </div>
+          {% if e.line_count %}
+          <div class="small text-muted mt-1">
+            Packed {{ e.packed_count }}/{{ e.line_count }}
+            &middot; Returned {{ e.returned_count }}/{{ e.line_count }}
+            {% if e.missing_total %}&middot; <span class="text-danger fw-semibold">{{ e.missing_total }} missing</span>{% endif %}
+          </div>
+          {% else %}
+          <div class="small text-muted mt-1">No equipment assigned</div>
+          {% endif %}
+        </div>
+        <span class="pill pill-{{ status_tone.get(e.status, 'blue') }} flex-none">{{ (e.status or 'ongoing')|capitalize }}</span>
+        <span class="text-muted flex-none d-none d-sm-inline" aria-hidden="true">&rsaquo;</span>
+      </a>
+    </li>
+    {% endfor %}
+  </ul>
+{% endmacro %}
+
+<section class="card-c mb-4">
+  <div class="card-head">
+    <h2>Active events <span class="text-muted small fw-semibold">({{ active|length }})</span></h2>
+  </div>
+  {% if active %}
+    {{ event_rows(active) }}
+  {% else %}
+  <div class="text-center text-muted p-5">
+    <p class="fw-bold mb-1">No active events</p>
+    <p class="small mb-0">Checklists appear here once an event is created.</p>
+  </div>
+  {% endif %}
+</section>
+
+{% if done %}
+<section class="card-c mb-4">
+  <div class="card-head">
+    <h2>Completed <span class="text-muted small fw-semibold">(last {{ done|length }})</span></h2>
+  </div>
+  {{ event_rows(done) }}
+</section>
+{% endif %}
+{% endblock %}

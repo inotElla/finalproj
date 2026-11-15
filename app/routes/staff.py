@@ -10,6 +10,7 @@ from flask_login import current_user, login_required
 from sqlalchemy.orm import joinedload
 
 from app import db
+from app.activity import log_activity
 from app.decorators import admin_required
 from app.forms import StaffStatusForm
 from app.models import Event, User
@@ -121,6 +122,8 @@ def edit(user_id):
             member.current_event_id = None  # available people are not in any event
         member.save()
         flash(f"{member.full_name} is now {member.status}.", "success")
+        where = f' ("{member.current_event.name}")' if member.current_event else ""
+        log_activity("updated", "staff", f"set {member.full_name} to {member.status}{where}")
         return redirect(url_for("staff.detail", user_id=member.id))
 
     return render_detail(member, status_form=form, open_status=True)

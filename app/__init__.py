@@ -24,7 +24,9 @@ def create_app():
 
     from app import models  # noqa: F401
 
+    from app.routes.activity import activity_bp  # <-- new
     from app.routes.auth import auth_bp
+    from app.routes.checklists import checklists_bp  # <-- new
     from app.routes.equipment import equipment_bp
     from app.routes.events import events_bp         # <-- new
     from app.routes.main import main_bp
@@ -36,7 +38,9 @@ def create_app():
     app.register_blueprint(profile_bp)
     app.register_blueprint(staff_bp)
     app.register_blueprint(equipment_bp)
-    app.register_blueprint(events_bp)               # <-- new
+    app.register_blueprint(events_bp)
+    app.register_blueprint(checklists_bp)
+    app.register_blueprint(activity_bp)             # <-- new
 
     with app.app_context():
         db.create_all()
@@ -53,6 +57,20 @@ def create_app():
             db.session.commit()
         except Exception:
             db.session.rollback()  # Column already exists, ignore
+
+        # create_all never changes a table that already exists, so the new checklist
+        # columns are added by hand. If a column is already there the database says
+        # so, and we just undo and carry on.
+        for statement in (
+            "ALTER TABLE event_equipment ADD COLUMN packed BOOLEAN NOT NULL DEFAULT 0",
+            "ALTER TABLE event_equipment ADD COLUMN returned_quantity INTEGER NULL",
+            "ALTER TABLE event_equipment ADD COLUMN issue_note VARCHAR(200) NULL",
+        ):
+            try:
+                db.session.execute(db.text(statement))
+                db.session.commit()
+            except Exception:
+                db.session.rollback()
 
     return app
 

@@ -1,0 +1,165 @@
+{% extends "layout_app.html" %}
+{% from "_macros.html" import icon %}
+
+{% block title %}{{ event.name }} checklist - C.A.T.E.R{% endblock %}
+{% block page_title %}{{ event.name }}{% endblock %}
+{% block page_sub %}Checklist{% endblock %}
+
+{% block app_content %}
+{% set is_admin = current_user.role == 'admin' %}
+{% set status_tone = {'upcoming': 'blue', 'ongoing': 'yellow', 'completed': 'sage'} %}
+{% set total = event.line_count %}
+
+<p class="mb-3"><a class="text-decoration-none fw-bold" href="{{ url_for('checklists.list_checklists') }}">&larr; All checklists</a></p>
+
+{# ---------- Summary and progress ---------- #}
+<section class="card-c p-4 mb-4">
+  <div class="d-flex flex-wrap align-items-start justify-content-between gap-3">
+    <div class="min-w-0">
+      <h2 class="h4 mb-2 text-break">{{ event.name }}</h2>
+      <div class="d-flex flex-wrap align-items-center gap-2">
+        <span class="pill pill-{{ status_tone.get(event.status, 'blue') }}">{{ (event.status or 'ongoing')|capitalize }}</span>
+        <span class="text-muted">{{ event.venue or 'No venue listed' }}{% if event.event_date %} &middot; {{ event.event_date.strftime('%B %d, %Y') }}{% endif %}</span>
+      </div>
+    </div>
+    <a class="btn btn-soft" href="{{ url_for('events.view_event', event_id=event.id) }}">Open event</a>
+  </div>
+
+  {% if total %}
+  <hr class="my-4">
+  <div class="row g-4">
+    <div class="col-12 col-md-6">
+      <div class="d-flex justify-content-between small fw-bold mb-1"><span>Packed</span><span>{{ event.packed_count }} of {{ total }}</span></div>
+      <div class="progress" role="progressbar" aria-label="Packed" aria-valuenow="{{ event.packed_count }}" aria-valuemin="0" aria-valuemax="{{ total }}">
+        <div class="progress-bar bg-success" style="width: {{ (event.packed_count * 100 / total)|round|int }}%"></div>
+      </div>
+    </div>
+    <div class="col-12 col-md-6">
+      <div class="d-flex justify-content-between small fw-bold mb-1"><span>Returned</span><span>{{ event.returned_count }} of {{ total }}</span></div>
+      <div class="progress" role="progressbar" aria-label="Returned" aria-valuenow="{{ event.returned_count }}" aria-valuemin="0" aria-valuemax="{{ total }}">
+        <div class="progress-bar bg-success" style="width: {{ (event.returned_count * 100 / total)|round|int }}%"></div>
+      </div>
+    </div>
+  </div>
+  {% if event.missing_total %}
+    <p class="text-danger fw-semibold mt-3 mb-0">{{ event.missing_total }} item{{ '' if event.missing_total == 1 else 's' }} did not come back.</p>
+  {% endif %}
+  {% endif %}
+
+  {# Completing is the last step, and only an admin does it. #}
+  {% if not locked and total and event.all_returned and is_admin %}
+  <div class="alert alert-success d-flex flex-wrap align-items-center justify-content-between gap-3 mt-4 mb-0" role="status">
+    <span>Everything has been checked back in. You can finish this event.</span>
+    <form method="POST" action="{{ url_for('checklists.complete_event', event_id=event.id) }}"
+          onsubmit="return confirm('Complete this event? Its staff become available again.');">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button type="submit" class="btn btn-brand">Complete event</button>
+    </form>
+  </div>
+  {% endif %}
+  {% if locked %}
+    <p class="text-muted small mt-3 mb-0">This event is completed, so the checklist is a read-only record.</p>
+  {% endif %}
+</section>
+
+{# ---------- The checklist ---------- #}
+<section class="card-c mb-4">
+  <div class="card-head">
+    <h2>Items <span class="text-muted small fw-semibold">({{ total }})</span></h2>
+    {% if not locked and lines|selectattr('packed', 'equalto', false)|list|length %}
+    <form method="POST" action="{{ url_for('checklists.pack_all', event_id=event.id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button type="submit" class="btn btn-soft btn-sm">Mark all packed</button>
+    </form>
+    {% endif %}
+  </div>
+
+  {% if lines %}
+  <ul class="list-unstyled mb-0">
+    {% for a in lines %}
+    <li class="p-3" style="border-top:1px solid var(--cater-line);">
+      <div class="d-flex flex-wrap align-items-start justify-content-between gap-3">
+
+        {# What the item is #}
+        <div class="min-w-0 flex-grow-1">
+          <div class="fw-bold text-break">
+            {{ a.equipment.name if a.equipment else 'Removed item' }}
+            <span class="text-muted fw-semibold">&times; {{ a.quantity }}</span>
+          </div>
+          {% if a.unit %}<div class="small text-muted">{{ a.unit.code }}</div>{% endif %}
+          {% if a.notes %}<div class="small text-muted">{{ a.notes }}</div>{% endif %}
+          {% if a.is_returned %}
+            <div class="small mt-1 {{ 'text-danger fw-semibold' if a.missing else 'text-muted' }}">
+              Returned {{ a.returned_quantity }} of {{ a.quantity }}{% if a.missing %} &middot; {{ a.missing }} missing{% endif %}{% if a.issue_note %} &middot; {{ a.issue_note }}{% endif %}
+            </div>
+          {% endif %}
+        </div>
+
+        {# Where the item is in the process #}
+        <div class="d-flex flex-wrap align-items-center gap-2">
+          {% if a.is_returned %}
+            <span class="pill pill-{{ 'rose' if a.missing else 'sage' }}">{{ 'Missing ' ~ a.missing if a.missing else 'Returned' }}</span>
+          {% elif a.packed %}
+            <span class="pill pill-blue">Out</span>
+          {% else %}
+            <span class="pill pill-yellow">Not packed</span>
+          {% endif %}
+
+          {% if not locked %}
+            {# Step 1: packed / not packed #}
+            {% if not a.is_returned %}
+            <form method="POST" action="{{ url_for('checklists.toggle_packed', event_id=event.id, line_id=a.id) }}">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button type="submit" class="btn btn-soft btn-sm">{{ 'Unpack' if a.packed else 'Mark packed' }}</button>
+            </form>
+            {% endif %}
+
+            {# Step 2: record the return (only after it went out) #}
+            {% if a.packed and not a.is_returned %}
+            <button type="button" class="btn btn-brand btn-sm" data-bs-toggle="collapse"
+                    data-bs-target="#return-{{ a.id }}" aria-controls="return-{{ a.id }}" aria-expanded="false">Record return</button>
+            {% endif %}
+
+            {% if a.is_returned %}
+            <form method="POST" action="{{ url_for('checklists.undo_return', event_id=event.id, line_id=a.id) }}"
+                  onsubmit="return confirm('Undo this return?');">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button type="submit" class="btn btn-outline-danger btn-sm">Undo return</button>
+            </form>
+            {% endif %}
+          {% endif %}
+        </div>
+      </div>
+
+      {# The return form stays closed until "Record return" is pressed #}
+      {% if not locked and a.packed and not a.is_returned %}
+      <div class="collapse mt-3" id="return-{{ a.id }}">
+        <form method="POST" action="{{ url_for('checklists.record_return', event_id=event.id, line_id=a.id) }}" class="row g-2 align-items-end">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <div class="col-6 col-md-3">
+            <label for="rq-{{ a.id }}" class="form-label">How many came back?</label>
+            <input type="number" class="form-control" id="rq-{{ a.id }}" name="returned_quantity"
+                   min="0" max="{{ a.quantity }}" value="{{ a.quantity }}" required>
+          </div>
+          <div class="col-12 col-md-6">
+            <label for="rn-{{ a.id }}" class="form-label">Note <span class="text-muted fw-normal">(optional)</span></label>
+            <input type="text" class="form-control" id="rn-{{ a.id }}" name="issue_note" maxlength="200" placeholder="e.g. 2 broken, 1 left at venue">
+          </div>
+          <div class="col-12 col-md-3 d-flex gap-2">
+            <button type="submit" class="btn btn-brand flex-fill">Save return</button>
+            <button type="button" class="btn btn-soft" data-bs-toggle="collapse" data-bs-target="#return-{{ a.id }}">Cancel</button>
+          </div>
+        </form>
+      </div>
+      {% endif %}
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <div class="text-center text-muted p-5">
+    <p class="fw-bold mb-1">Nothing to check yet</p>
+    <p class="small mb-0">Assign equipment to this event first, from the event page.</p>
+  </div>
+  {% endif %}
+</section>
+{% endblock %}

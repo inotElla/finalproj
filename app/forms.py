@@ -15,6 +15,7 @@ from wtforms.validators import (
     DataRequired,
     Email,
     EqualTo,
+    InputRequired,
     Length,
     NumberRange,
     Optional,
@@ -182,6 +183,15 @@ class AssignEquipmentForm(FlaskForm):
 class AssignStaffForm(FlaskForm):
     user_id = SelectField("Staff member", coerce=int, validators=[DataRequired()])
     add_staff = SubmitField("Add to event")
+
+
+class ReturnForm(FlaskForm):
+    # InputRequired (not DataRequired) because 0 is a real answer: "none came back".
+    returned_quantity = IntegerField(
+        "Returned", validators=[InputRequired(), NumberRange(min=0, max=100000)]
+    )
+    issue_note = StringField("Note", validators=[Optional(), Length(max=200)])
+    save_return = SubmitField("Save return")
 
 
 # ---------- Equipment ----------

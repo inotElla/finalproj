@@ -3,6 +3,7 @@ from flask_login import login_required
 from sqlalchemy.exc import IntegrityError
 
 from app import db
+from app.activity import log_activity
 from app.decorators import admin_required
 from app.forms import AddUnitsForm, EquipmentForm, UnitForm
 from app.models import CATEGORIES, Equipment, EquipmentUnit
@@ -13,6 +14,7 @@ PER_PAGE = 10
 
 
 def clean_name(text):
+    # " ".join(text.split()) collapses extra spaces: "  Gold   Spoons " -> "Gold Spoons"
     return " ".join(text.split())
 
 
@@ -25,6 +27,7 @@ def plural(count, word):
 
 def render_list(add_form=None, open_add=False):
     """The equipment list. open_add=True starts with the add form open (after an error)."""
+    # request.args holds the ?q=...&category=...&page=... part of the address.
     q = request.args.get("q", "").strip()[:100]
     category = request.args.get("category", "")
     page = request.args.get("page", 1, type=int)  # type=int: "abc" falls back to 1
@@ -56,6 +59,7 @@ def render_list(add_form=None, open_add=False):
 
 
 def render_detail(equipment, units_form=None, open_units=False):
+    """The equipment page: its details and, for one-by-one items, its units."""
     units = (
         EquipmentUnit.query.filter_by(equipment_id=equipment.id)
         .order_by(EquipmentUnit.code)
@@ -114,8 +118,10 @@ def create_equipment():
                 )
                 return redirect(url_for("equipment.view_equipment", equipment_id=equipment.id))
             flash(f'"{equipment.name}" was added with {plural(quantity, "unit")}.', "success")
+            log_activity("created", "equipment", f'added equipment "{equipment.name}" with {plural(quantity, "unit")}')
         else:
             flash(f'"{equipment.name}" was added ({quantity} in stock).', "success")
+            log_activity("created", "equipment", f'added equipment "{equipment.name}" ({quantity} in stock)')
         return redirect(url_for("equipment.view_equipment", equipment_id=equipment.id))
 
     # Something was wrong: show the list again with the add form open and its errors.
@@ -139,6 +145,7 @@ def edit_equipment(equipment_id):
     form = EquipmentForm(obj=equipment, equipment=equipment)
 
     if form.validate_on_submit():
+        old_name = equipment.name
         was_type = equipment.tracking_type
         new_type = form.tracking_type.data
         new_name = clean_name(form.name.data)
@@ -160,6 +167,10 @@ def edit_equipment(equipment_id):
             equipment.add_units(quantity)  # the quantity becomes that many units
 
         flash("Equipment updated.", "success")
+        if renamed:
+            log_activity("updated", "equipment", f'renamed equipment "{old_name}" to "{equipment.name}"')
+        else:
+            log_activity("updated", "equipment", f'updated equipment "{equipment.name}"')
         return redirect(url_for("equipment.view_equipment", equipment_id=equipment.id))
 
     return render_template("equipments/equipment_form.html", form=form, equipment=equipment)
@@ -172,6 +183,7 @@ def delete_equipment(equipment_id):
     name = equipment.name
     equipment.delete()  # its units and event assignments go with it (see models.py)
     flash(f'"{name}" and its units were deleted.', "success")
+    log_activity("deleted", "equipment", f'deleted equipment "{name}"')
     return redirect(url_for("equipment.list_equipment"))
 
 
@@ -197,6 +209,7 @@ def add_units(equipment_id):
             return render_detail(equipment, units_form=form, open_units=True)
 
         flash(f"Added {plural(count, 'unit')}.", "success")
+        log_activity("created", "unit", f'added {plural(count, "unit")} to "{equipment.name}"')
         return redirect(url_for("equipment.view_equipment", equipment_id=equipment.id))
 
     return render_detail(equipment, units_form=form, open_units=True)
@@ -213,6 +226,7 @@ def edit_unit(unit_id):
         unit.status = form.status.data
         unit.save()
         flash(f"{unit.code} was updated.", "success")
+        log_activity("updated", "unit", f"updated {unit.code} (condition: {unit.condition}, status: {unit.status})")
         return redirect(url_for("equipment.view_equipment", equipment_id=unit.equipment_id))
 
     return render_template("equipments/unit_form.html", form=form, unit=unit)
@@ -225,4 +239,6 @@ def delete_unit(unit_id):
     equipment_id, name = unit.equipment_id, unit.code
     unit.delete()
     flash(f"{name} was deleted.", "success")
+    log_activity("deleted", "unit", f"deleted {name}")
     return redirect(url_for("equipment.view_equipment", equipment_id=equipment_id))
+
