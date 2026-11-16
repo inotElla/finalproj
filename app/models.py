@@ -1,5 +1,5 @@
 import re
-from datetime import datetime, timezone
+from datetime import datetime, time, timezone
 from sqlalchemy import func
 from flask_login import UserMixin
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -102,6 +102,7 @@ class Event(BaseModel):
     name = db.Column(db.String(150), nullable=False)
     venue = db.Column(db.String(200), nullable=True)
     event_date = db.Column(db.DateTime, nullable=True)
+    end_time = db.Column(db.Time, nullable=True)  # time of day the event ends (optional)
     status = db.Column(db.String(30), default="ongoing")  # "upcoming", "ongoing", "completed"
 
     staff_members = db.relationship(
@@ -237,6 +238,15 @@ class Equipment(BaseModel):
         return EventEquipment.query.filter_by(equipment_id=self.id).count()
 
     @property
+    def active_assignment_count(self):
+        """On how many events that are not finished is this equipment used?"""
+        return (
+            EventEquipment.query.join(Event, EventEquipment.event_id == Event.id)
+            .filter(EventEquipment.equipment_id == self.id, Event.status != "completed")
+            .count()
+        )
+
+    @property
     def assigned_quantity(self):
         """How many are promised to events that are not finished (for by-quantity items)."""
         total = (
@@ -330,4 +340,5 @@ class ActivityLog(BaseModel):
 @login_manager.user_loader
 def load_user(user_id):
     return db.session.get(User, int(user_id))
+
 

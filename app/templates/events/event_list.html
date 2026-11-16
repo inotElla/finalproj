@@ -11,8 +11,8 @@
 <section class="card-c">
   <div class="card-head">
     <h2>All events <span class="text-muted small fw-semibold">({{ pagination.total }})</span></h2>
-    {# Only admins create events. Staff just see the list. #}
-    {% if is_admin %}
+    {# Any signed-in user can add events. #}
+    {% if can_manage %}
     <button type="button" class="btn btn-brand btn-sm" data-bs-toggle="collapse" data-bs-target="#add-panel"
             aria-controls="add-panel" aria-expanded="{{ 'true' if open_add else 'false' }}">
       <span aria-hidden="true">+</span> Add event
@@ -20,7 +20,7 @@
     {% endif %}
   </div>
 
-  {% if is_admin %}
+  {% if can_manage %}
   <div class="collapse {{ 'show' if open_add }}" id="add-panel">
     <div class="card-body-c" style="border-bottom:1px solid var(--cater-line);">
       <form method="POST" action="{{ url_for('events.create_event') }}">
@@ -29,6 +29,7 @@
           <div class="col-12 col-md-6">{{ render_field(add_form.name) }}</div>
           <div class="col-12 col-md-6">{{ render_field(add_form.venue) }}</div>
           <div class="col-12 col-md-6">{{ render_field(add_form.event_date) }}</div>
+          <div class="col-12 col-md-6">{{ render_field(add_form.end_time, hint="Optional. Pick-up alerts start after this time.") }}</div>
           <div class="col-12 col-md-6">{{ render_field(add_form.status) }}</div>
         </div>
         <div class="d-flex flex-wrap gap-2">
@@ -130,7 +131,7 @@
   {% else %}
   <div class="text-center text-muted p-5">
     <p class="fw-bold mb-1">No events yet</p>
-    <p class="small mb-0">{{ 'Press + Add event to create the first one.' if is_admin else 'An admin will add events here.' }}</p>
+    <p class="small mb-0">{{ 'Press + Add event to create the first one.' if can_manage else 'Events will appear here.' }}</p>
   </div>
   {% endif %}
 </section>

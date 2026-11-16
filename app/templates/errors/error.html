@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }} - C.A.T.E.R{% endblock %}
+
+{% block body %}
+<main class="d-flex align-items-center justify-content-center px-3" style="min-height:100vh;" id="main">
+  <section class="card-c p-4 p-md-5 text-center" style="max-width:520px;width:100%;">
+    <p class="display-4 fw-bold mb-2" aria-hidden="true">{{ code }}</p>
+    <h1 class="h3 mb-3">{{ title }}</h1>
+    <p class="text-muted mb-4">{{ message }}</p>
+    <div class="d-flex flex-wrap justify-content-center gap-2">
+      {% if signed_in %}
+        <a class="btn btn-brand" href="{{ url_for('main.dashboard') }}">Go to dashboard</a>
+      {% else %}
+        <a class="btn btn-brand" href="{{ url_for('main.index') }}">Go to home</a>
+      {% endif %}
+      <button type="button" class="btn btn-soft" onclick="history.back()">Go back</button>
+    </div>
+  </section>
+</main>
+{% endblock %}

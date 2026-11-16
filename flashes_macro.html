@@ -1,0 +1,46 @@
+{# In app/templates/_macros.html: DELETE the old {% macro flashes() %} ... {% endmacro %}
+   and paste this in its place. Nothing else needs to change: every page that already
+   calls {{ flashes() }} now shows its feedback as a pop-up. #}
+{% macro flashes() %}
+  {% set messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    {# The most serious message decides the title and colour: danger, warning, success, info. #}
+    {% set rank = {'danger': 0, 'warning': 1, 'success': 2, 'info': 3} %}
+    {% set top = namespace(level='info', score=9) %}
+    {% for category, message in messages %}
+      {% if rank.get(category, 3) < top.score %}
+        {% set top.level = category if category in rank else 'info' %}
+        {% set top.score = rank.get(category, 3) %}
+      {% endif %}
+    {% endfor %}
+    {% set title = {'danger': 'Something went wrong', 'warning': 'Please note', 'success': 'Done', 'info': 'Notice'}[top.level] %}
+    {% set color = {'danger': 'danger', 'warning': 'warning', 'success': 'success', 'info': 'primary'}[top.level] %}
+
+    <div class="modal fade" id="feedbackModal" tabindex="-1" aria-labelledby="feedbackTitle" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="border-top:5px solid var(--bs-{{ color }});">
+          <div class="modal-header border-0 pb-0">
+            <h2 class="modal-title h5" id="feedbackTitle">{{ title }}</h2>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            {% for category, message in messages %}
+              <p class="mb-2">{{ message }}</p>
+            {% endfor %}
+          </div>
+          <div class="modal-footer border-0 pt-0">
+            <button type="button" class="btn btn-brand" id="feedbackOk" data-bs-dismiss="modal">OK</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <script>
+      document.addEventListener("DOMContentLoaded", () => {
+        const box = document.getElementById("feedbackModal");
+        if (!box || !window.bootstrap) return;
+        box.addEventListener("shown.bs.modal", () => document.getElementById("feedbackOk").focus());
+        new bootstrap.Modal(box).show();
+      });
+    </script>
+  {% endif %}
+{% endmacro %}

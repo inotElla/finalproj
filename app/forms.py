@@ -10,6 +10,7 @@ from wtforms import (
     SelectField,
     StringField,
     SubmitField,
+    TimeField,
 )
 from wtforms.validators import (
     DataRequired,
@@ -34,6 +35,21 @@ from app.models import (
 )
 
 
+def strip(value):
+    """A WTForms filter: remove spaces at both ends of what was typed.
+    (None, for a box that was not sent at all, is left alone.)"""
+    return value.strip() if isinstance(value, str) else value
+
+
+def real_name(form, field):
+    """A person's name: letters, spaces, apostrophes, hyphens and periods only."""
+    name = field.data or ""
+    if not any(c.isalpha() for c in name):
+        raise ValidationError("Name must contain letters.")
+    if any(not (c.isalpha() or c in " .'-") for c in name):
+        raise ValidationError("Name can only have letters, spaces, apostrophes, hyphens and periods.")
+
+
 def letter_and_number(form, field):
     """Shared rule: the password needs at least one letter and one digit."""
     pw = field.data or ""
@@ -43,10 +59,10 @@ def letter_and_number(form, field):
 
 class RegistrationForm(FlaskForm):
     full_name = StringField(
-        "Full name", validators=[DataRequired(), Length(min=2, max=100)]
+        "Full name", validators=[DataRequired(), Length(min=2, max=100), real_name], filters=[strip]
     )
     email = EmailField(
-        "Email", validators=[DataRequired(), Email(), Length(max=120)]
+        "Email", validators=[DataRequired(), Email(), Length(max=120)], filters=[strip]
     )
     password = PasswordField(
         "Password",
@@ -64,7 +80,7 @@ class RegistrationForm(FlaskForm):
 
 
 class LoginForm(FlaskForm):
-    email = EmailField("Email", validators=[DataRequired(), Email()])
+    email = EmailField("Email", validators=[DataRequired(), Email()], filters=[strip])
     password = PasswordField("Password", validators=[DataRequired()])
     remember = BooleanField("Remember me")
     submit = SubmitField("Log in")
@@ -72,7 +88,7 @@ class LoginForm(FlaskForm):
 
 class PasswordResetRequestForm(FlaskForm):
     email = EmailField(
-        "Email", validators=[DataRequired(), Email(), Length(max=120)]
+        "Email", validators=[DataRequired(), Email(), Length(max=120)], filters=[strip]
     )
     submit = SubmitField("Send reset link")
 
@@ -97,14 +113,14 @@ class ResetPasswordForm(FlaskForm):
 
 class ProfileNameForm(FlaskForm):
     full_name = StringField(
-        "Full name", validators=[DataRequired(), Length(min=2, max=100)]
+        "Full name", validators=[DataRequired(), Length(min=2, max=100), real_name], filters=[strip]
     )
     save_name = SubmitField("Save name")
 
 
 class ChangeEmailForm(FlaskForm):
     new_email = EmailField(
-        "New email", validators=[DataRequired(), Email(), Length(max=120)]
+        "New email", validators=[DataRequired(), Email(), Length(max=120)], filters=[strip]
     )
     email_password = PasswordField("Current password", validators=[DataRequired()])
     save_email = SubmitField("Send confirmation link")
@@ -158,11 +174,15 @@ class StaffStatusForm(FlaskForm):
 
 class EventForm(FlaskForm):
     name = StringField(
-        "Event name", validators=[DataRequired(), Length(min=2, max=150)]
+        "Event name", validators=[DataRequired(), Length(min=2, max=150)], filters=[strip]
     )
-    venue = StringField("Venue / location", validators=[Optional(), Length(max=200)])
+    venue = StringField(
+        "Venue / location", validators=[Optional(), Length(max=200)], filters=[strip]
+    )
     # DateField draws a date picker. Optional(): the date can be left empty.
     event_date = DateField("Date", validators=[Optional()])
+    # TimeField draws a time picker. Once this time passes, unreturned items appear in Pick-up alerts.
+    end_time = TimeField("Ends at", validators=[Optional()])
     status = SelectField(
         "Status",
         choices=[(s, s.capitalize()) for s in EVENT_STATUSES],
@@ -170,13 +190,17 @@ class EventForm(FlaskForm):
     )
     save = SubmitField("Save event")
 
+    def validate_end_time(self, field):
+        if field.data and not self.event_date.data:
+            raise ValidationError("Pick the event date first, then the time it ends.")
+
 
 class AssignEquipmentForm(FlaskForm):
     equipment_id = SelectField("Equipment", coerce=int, validators=[DataRequired()])
     quantity = IntegerField(
         "Quantity", default=1, validators=[DataRequired(), NumberRange(min=1, max=100000)]
     )
-    notes = StringField("Notes", validators=[Optional(), Length(max=200)])
+    notes = StringField("Notes", validators=[Optional(), Length(max=200)], filters=[strip])
     assign = SubmitField("Assign equipment")
 
 
@@ -190,7 +214,7 @@ class ReturnForm(FlaskForm):
     returned_quantity = IntegerField(
         "Returned", validators=[InputRequired(), NumberRange(min=0, max=100000)]
     )
-    issue_note = StringField("Note", validators=[Optional(), Length(max=200)])
+    issue_note = StringField("Note", validators=[Optional(), Length(max=200)], filters=[strip])
     save_return = SubmitField("Save return")
 
 
@@ -199,7 +223,9 @@ class ReturnForm(FlaskForm):
 
 class EquipmentForm(FlaskForm):
     name = StringField(
-        "Name", validators=[DataRequired(), Length(min=2, max=EQUIPMENT_NAME_MAX)]
+        "Name",
+        validators=[DataRequired(), Length(min=2, max=EQUIPMENT_NAME_MAX)],
+        filters=[strip],
     )
     category = SelectField("Category", choices=[(c, c) for c in CATEGORIES])
     tracking_type = SelectField(
@@ -240,6 +266,18 @@ class EquipmentForm(FlaskForm):
         ):
             raise ValidationError(f"You can create up to {MAX_UNITS_AT_ONCE} units at a time.")
 
+        # Editing a by-quantity item: the stock cannot go below what events already hold.
+        if (
+            self.equipment is not None
+            and self.tracking_type.data == "bulk"
+            and field.data is not None
+        ):
+            held = self.equipment.assigned_quantity
+            if field.data < held:
+                raise ValidationError(
+                    f"{held} are promised to events, so the quantity cannot be lower than that."
+                )
+
 
 class AddUnitsForm(FlaskForm):
     count = IntegerField(
@@ -260,4 +298,5 @@ class UnitForm(FlaskForm):
     )
     status = SelectField("Status", choices=[(s, s.capitalize()) for s in UNIT_STATUSES])
     save = SubmitField("Save unit")
+
 

@@ -140,10 +140,30 @@
   </div>
   <div class="col-xl-5" id="pickups">
     <section class="card-c h-100">
-      <div class="card-head"><h2>Pick-up alerts</h2></div>
-      <div class="card-body-c">
-        {{ empty_state('alert', 'Pick-up alerts unavailable', 'Pickup due dates are not recorded, so overdue equipment cannot be identified yet.') }}
+      <div class="card-head">
+        <h2>Pick-up alerts{% if pickups %} <span class="text-muted small fw-semibold">({{ pickups|length }})</span>{% endif %}</h2>
       </div>
+      {% if pickups %}
+      <ul class="list-unstyled mb-0">
+        {% for p in pickups %}
+        <li class="d-flex align-items-center gap-3 p-3" style="border-top:1px solid var(--cater-line);">
+          <div class="min-w-0 flex-grow-1">
+            <div class="fw-bold text-truncate">{{ p.event.name }}</div>
+          </div>
+          <div class="text-end flex-none">
+            <span class="pill pill-rose">{{ p.waiting }} item{{ '' if p.waiting == 1 else 's' }} out</span>
+            <div class="small text-muted">
+              ended {{ p.ended_at.strftime('%b %d, %I:%M %p') }}
+            </div>
+          </div>
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <div class="card-body-c">
+        {{ empty_state('alert', 'Nothing waiting for pick-up', 'Events that are over but still have equipment out will show here.') }}
+      </div>
+      {% endif %}
     </section>
   </div>
 </div>

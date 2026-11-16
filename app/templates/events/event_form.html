@@ -12,6 +12,7 @@
     {{ render_field(form.name) }}
     {{ render_field(form.venue) }}
     {{ render_field(form.event_date) }}
+    {{ render_field(form.end_time, hint="Optional. When this time passes, unreturned items show in Pick-up alerts. Left empty, it counts as the end of the day.") }}
     {{ render_field(form.status, hint="Setting an event to Completed returns its one-by-one units to the shelf and frees its staff.") }}
     <div class="d-flex flex-wrap gap-2">
       {{ form.save(class="btn btn-brand") }}

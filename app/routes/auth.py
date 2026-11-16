@@ -8,6 +8,7 @@ from flask import (
     redirect,
     render_template,
     request,
+    session,
     url_for,
 )
 from flask_login import current_user, login_required, login_user, logout_user
@@ -23,6 +24,7 @@ from app.forms import (
     ResetPasswordForm,
 )
 from app.models import User
+from app.throttle import login_limiter, reset_limiter
 
 auth_bp = Blueprint("auth", __name__)
 
@@ -130,6 +132,13 @@ def request_password_reset():
 
     form = PasswordResetRequestForm()
     if form.validate_on_submit():
+        # Stops someone from using this page to fill a mailbox with reset emails.
+        key = request.remote_addr or "unknown"
+        if reset_limiter.is_blocked(key):
+            flash("Too many reset requests. Please try again later.", "danger")
+            return render_template("forgot_password.html", form=form), 429
+        reset_limiter.record(key)
+
         user = User.query.filter_by(email=form.email.data.strip().lower()).first()
         if user:
             try:
@@ -200,16 +209,30 @@ def login():
     form = LoginForm()
 
     if form.validate_on_submit():
-        user = User.query.filter_by(email=form.email.data.lower()).first()
+        email = form.email.data.lower()
+        # Failed attempts are counted per address + email. Five wrong tries in ten
+        # minutes pause that combination, which makes password guessing impractical.
+        key = f"{request.remote_addr}|{email}"
+        if login_limiter.is_blocked(key):
+            wait = login_limiter.minutes_left(key)
+            flash(f"Too many failed attempts. Try again in {wait} minute{'' if wait == 1 else 's'}.", "danger")
+            return render_template("login.html", form=form), 429
+
+        user = User.query.filter_by(email=email).first()
 
         if user and user.check_password(form.password.data):
+            login_limiter.reset(key)
             login_user(user, remember=form.remember.data)
+            session.permanent = True  # the login expires after 8 hours (see config.py)
             log_activity("login", "account", "logged in")
             next_page = request.args.get("next")
             if is_safe_redirect(next_page):
                 return redirect(next_page)
             return redirect(url_for("main.dashboard"))
 
+        login_limiter.record(key)
+        # The same message for "no such email" and "wrong password", so nobody can
+        # use this page to find out which emails are registered.
         flash("Invalid email or password.", "danger")
 
     return render_template("login.html", form=form)
@@ -222,4 +245,5 @@ def logout():
     logout_user()
     flash("You have been logged out.", "info")
     return redirect(url_for("auth.login"))
+
 

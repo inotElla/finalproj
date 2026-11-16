@@ -7,7 +7,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from app import db
 from app.activity import log_activity
-from app.decorators import admin_required
+from app.decorators import admin_required  # delete and staff assignment
 from app.forms import AssignEquipmentForm, AssignStaffForm, EventForm
 from app.models import (
     EVENT_STATUSES,
@@ -76,8 +76,9 @@ def render_list(add_form=None, open_add=False):
         page=page, per_page=PER_PAGE, error_out=False
     )
 
-    is_admin = current_user.role == "admin"
-    if is_admin and add_form is None:
+    is_admin = current_user.role == "admin"  # only admins may delete
+    can_manage = True  # any signed-in user may add and edit events
+    if can_manage and add_form is None:
         add_form = EventForm(formdata=None)
 
     return render_template(
@@ -89,27 +90,32 @@ def render_list(add_form=None, open_add=False):
         add_form=add_form,
         open_add=open_add,
         is_admin=is_admin,
+        can_manage=can_manage,
     )
 
 
 def render_detail(
     event, equipment_form=None, staff_form=None, open_equipment=False, open_staff=False
 ):
-    is_admin = current_user.role == "admin"
+    is_admin = current_user.role == "admin"  # only admins may delete
+    can_manage = True  # any signed-in user may edit and assign
     # Nothing can be added to an event that is over.
-    can_assign = is_admin and event.status != "completed"
+    can_assign = can_manage and event.status != "completed"
+    # Putting people on an event is for admins only.
+    can_staff = is_admin and event.status != "completed"
 
-    if can_assign:
-        if equipment_form is None:
-            equipment_form = equipment_form_for(fresh=True)
-        if staff_form is None:
-            staff_form = staff_form_for(fresh=True)
+    if can_assign and equipment_form is None:
+        equipment_form = equipment_form_for(fresh=True)
+    if can_staff and staff_form is None:
+        staff_form = staff_form_for(fresh=True)
 
     return render_template(
         "events/event_detail.html",
         event=event,
         is_admin=is_admin,
+        can_manage=can_manage,
         can_assign=can_assign,
+        can_staff=can_staff,
         equipment_form=equipment_form,
         staff_form=staff_form,
         open_equipment=open_equipment,
@@ -127,7 +133,7 @@ def list_events():
 
 
 @events_bp.route("/new", methods=["GET", "POST"])
-@admin_required
+@login_required
 def create_event():
     if request.method == "GET":
         return redirect(url_for("events.list_events"))
@@ -138,6 +144,7 @@ def create_event():
             name=clean(form.name.data),
             venue=clean(form.venue.data) if form.venue.data else None,
             event_date=to_datetime(form.event_date.data),
+            end_time=form.end_time.data,
             status=form.status.data,
         )
         event.save()
@@ -156,7 +163,7 @@ def view_event(event_id):
 
 
 @events_bp.route("/<int:event_id>/edit", methods=["GET", "POST"])
-@admin_required
+@login_required
 def edit_event(event_id):
     event = db.get_or_404(Event, event_id)
     form = EventForm(obj=event)
@@ -166,6 +173,7 @@ def edit_event(event_id):
         event.name = clean(form.name.data)
         event.venue = clean(form.venue.data) if form.venue.data else None
         event.event_date = to_datetime(form.event_date.data)
+        event.end_time = form.end_time.data
 
         finishing = form.status.data == "completed" and not was_completed
         if finishing:
@@ -248,7 +256,7 @@ def assign_item(event, equipment, quantity, notes):
 
 
 @events_bp.route("/<int:event_id>/equipment", methods=["POST"])
-@admin_required
+@login_required
 def assign_equipment(event_id):
     event = db.get_or_404(Event, event_id)
     if event.status == "completed":
@@ -281,7 +289,7 @@ def assign_equipment(event_id):
 
 
 @events_bp.route("/<int:event_id>/equipment/<int:assignment_id>/remove", methods=["POST"])
-@admin_required
+@login_required
 def remove_equipment(event_id, assignment_id):
     line = db.get_or_404(EventEquipment, assignment_id)
     if line.event_id != event_id:  # the line belongs to some other event
@@ -331,3 +339,4 @@ def remove_staff(event_id, user_id):
     flash(f"{person.full_name} was removed from this event.", "success")
     log_activity("removed", "event", f'removed {person.full_name} from "{event_name}"')
     return redirect(url_for("events.view_event", event_id=event_id))
+

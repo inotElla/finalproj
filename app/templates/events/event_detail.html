@@ -20,14 +20,16 @@
         <span class="text-muted">{{ event.venue or 'No venue listed' }}</span>
       </div>
     </div>
-    {% if is_admin %}
+    {% if can_manage %}
     <div class="d-flex flex-wrap gap-2">
       <a class="btn btn-soft" href="{{ url_for('events.edit_event', event_id=event.id) }}">Edit</a>
+      {% if is_admin %}
       <form method="POST" action="{{ url_for('events.delete_event', event_id=event.id) }}"
             onsubmit="return confirm('Delete this event? Its units and staff are given back. This cannot be undone.');">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <button type="submit" class="btn btn-outline-danger">Delete</button>
       </form>
+      {% endif %}
     </div>
     {% endif %}
   </div>
@@ -36,7 +38,7 @@
   <div class="row g-3">
     <div class="col-6 col-md-4">
       <div class="text-muted small fw-bold text-uppercase">Date</div>
-      <div class="mb-0">{{ event.event_date.strftime('%B %d, %Y') if event.event_date else 'Not set' }}</div>
+      <div class="mb-0">{{ event.event_date.strftime('%B %d, %Y') if event.event_date else 'Not set' }}{% if event.event_date and event.end_time %}<div class="small text-muted">Ends {{ event.end_time.strftime('%I:%M %p') }}</div>{% endif %}</div>
     </div>
     <div class="col-6 col-md-4">
       <div class="text-muted small fw-bold text-uppercase">Staff</div>
@@ -53,7 +55,7 @@
 <section class="card-c mb-4">
   <div class="card-head">
     <h2>Staff <span class="text-muted small fw-semibold">({{ event.staff_count }})</span></h2>
-    {% if can_assign %}
+    {% if can_staff %}
     <button type="button" class="btn btn-brand btn-sm" data-bs-toggle="collapse" data-bs-target="#staff-panel"
             aria-controls="staff-panel" aria-expanded="{{ 'true' if open_staff else 'false' }}">
       <span aria-hidden="true">+</span> Add staff
@@ -61,7 +63,7 @@
     {% endif %}
   </div>
 
-  {% if can_assign %}
+  {% if can_staff %}
   <div class="collapse {{ 'show' if open_staff }}" id="staff-panel">
     <div class="card-body-c" style="border-bottom:1px solid var(--cater-line);">
       {% if staff_form.user_id.choices %}
@@ -76,7 +78,7 @@
         </div>
       </form>
       {% else %}
-        <p class="text-muted mb-0">Everyone is already in an event, nobody is available to add.</p>
+        <p class="text-muted mb-0">Everyone is already in an event, so nobody is available to add.</p>
       {% endif %}
     </div>
   </div>
@@ -103,7 +105,7 @@
   {% else %}
   <div class="text-center text-muted p-4">
     <p class="fw-bold mb-1">No staff yet</p>
-    <p class="small mb-0">{{ 'Press + Add staff to put someone on this event.' if can_assign else 'Nobody is on this event.' }}</p>
+    <p class="small mb-0">{{ 'Press + Add staff to put someone on this event.' if can_staff else 'Nobody is on this event.' }}</p>
   </div>
   {% endif %}
 </section>
@@ -127,17 +129,18 @@
       <form method="POST" action="{{ url_for('events.assign_equipment', event_id=event.id) }}">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div class="row">
-          <div class="col-12 col-md-6">{{ render_field(equipment_form.equipment_id, hint="Only items that are available are listed.") }}</div>
+          <div class="col-12 col-md-6">{{ render_field(equipment_form.equipment_id, hint="Only items that still have some free are listed.") }}</div>
           <div class="col-6 col-md-2">{{ render_field(equipment_form.quantity) }}</div>
           <div class="col-12 col-md-4">{{ render_field(equipment_form.notes) }}</div>
         </div>
+        <p class="text-muted small">One-by-one items are given as that many units, and each unit is marked Out until the event ends.</p>
         <div class="d-flex flex-wrap gap-2">
           {{ equipment_form.assign(class="btn btn-brand") }}
           <button type="button" class="btn btn-soft" data-bs-toggle="collapse" data-bs-target="#equipment-panel">Cancel</button>
         </div>
       </form>
       {% else %}
-        <p class="text-muted mb-0">Nothing is free to assign. Wait for other events to finish.</p>
+        <p class="text-muted mb-0">Nothing is free to assign. Add equipment first, or wait for other events to finish.</p>
       {% endif %}
     </div>
   </div>
@@ -169,7 +172,7 @@
           <td class="text-end fw-bold">{{ a.quantity }}</td>
           <td class="d-none d-sm-table-cell text-muted">{{ a.notes or '-' }}</td>
           <td class="text-end">
-            {% if is_admin %}
+            {% if can_manage %}
             <form method="POST" action="{{ url_for('events.remove_equipment', event_id=event.id, assignment_id=a.id) }}"
                   onsubmit="return confirm('Remove this item from the event?');">
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">

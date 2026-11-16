@@ -180,6 +180,15 @@ def edit_equipment(equipment_id):
 @admin_required
 def delete_equipment(equipment_id):
     equipment = db.get_or_404(Equipment, equipment_id)
+    busy = equipment.active_assignment_count
+    if busy:
+        # Deleting it now would silently remove it from events that still need it.
+        flash(
+            f'"{equipment.name}" is on {plural(busy, "active event")}. '
+            "Remove it from them first, or complete those events.",
+            "warning",
+        )
+        return redirect(url_for("equipment.view_equipment", equipment_id=equipment.id))
     name = equipment.name
     equipment.delete()  # its units and event assignments go with it (see models.py)
     flash(f'"{name}" and its units were deleted.', "success")
@@ -236,9 +245,13 @@ def edit_unit(unit_id):
 @admin_required
 def delete_unit(unit_id):
     unit = db.get_or_404(EquipmentUnit, unit_id)
+    if unit.status == "out":
+        flash(f"{unit.code} is out on an event. Return it first, then delete it.", "warning")
+        return redirect(url_for("equipment.view_equipment", equipment_id=unit.equipment_id))
     equipment_id, name = unit.equipment_id, unit.code
     unit.delete()
     flash(f"{name} was deleted.", "success")
     log_activity("deleted", "unit", f"deleted {name}")
     return redirect(url_for("equipment.view_equipment", equipment_id=equipment_id))
+
 
