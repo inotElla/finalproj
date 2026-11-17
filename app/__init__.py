@@ -1,4 +1,4 @@
-from flask import Flask, session
+from flask import Flask, request, session
 from flask_login import LoginManager
 from flask_mail import Mail
 from flask_sqlalchemy import SQLAlchemy
@@ -75,6 +75,20 @@ def create_app():
     app.register_blueprint(activity_bp)
 
     register_error_handlers(app)
+
+    @app.before_request
+    def keep_event_statuses_current():
+        # Before showing a page to a signed-in person, make sure event statuses match the
+        # clock (see app/event_status.py). It does real work at most once a minute.
+        if "_user_id" not in session or request.endpoint in (None, "static"):
+            return
+        try:
+            from app.event_status import refresh_event_statuses
+
+            refresh_event_statuses()
+        except Exception:
+            db.session.rollback()
+            app.logger.exception("Could not refresh event statuses")
 
     @app.after_request
     def add_security_headers(response):
