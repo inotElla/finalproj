@@ -2,10 +2,9 @@ import requests  # ← CHANGED: was "import smtplib" — we now use HTTP, not SM
 
 from flask import current_app, render_template, url_for
 
-#HTTPS (port 443)
-RESEND_API_URL = "https://api.resend.com/emails"
-RESEND_TIMEOUT = 10
 
+RESEND_API_URL = "https://api.resend.com/emails"
+RESEND_TIMEOUT = 10  
 
 def external_url(endpoint, **values):
     base_url = current_app.config.get("APP_BASE_URL")
@@ -31,11 +30,9 @@ def send_email(to, subject, template, text, **context):
 
     html_body = render_template(f"email/{template}.html", **context)
 
-
     deliver(api_key, sender, to, subject, text, html_body)
 
 def deliver(api_key, sender, to, subject, text, html):
-
     response = requests.post(
         RESEND_API_URL,
         headers={
@@ -51,4 +48,5 @@ def deliver(api_key, sender, to, subject, text, html):
         },
         timeout=RESEND_TIMEOUT,
     )
+
     response.raise_for_status()

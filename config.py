@@ -11,7 +11,8 @@ def env_flag(name, default="false"):
 
 
 def require_env(name):
-
+    """Read a setting that must exist. A missing one stops the app with a clear
+    message, instead of a confusing KeyError traceback."""
     value = os.environ.get(name)
     if not value:
         raise RuntimeError(
@@ -37,10 +38,8 @@ class Config:
     REMEMBER_COOKIE_SAMESITE = "Lax"
     REMEMBER_COOKIE_SECURE = env_flag("SESSION_COOKIE_SECURE")
     REMEMBER_COOKIE_DURATION = timedelta(days=14)
-    PERMANENT_SESSION_LIFETIME = timedelta(hours=8)  
-
+    PERMANENT_SESSION_LIFETIME = timedelta(hours=8)
     MAX_CONTENT_LENGTH = 1 * 1024 * 1024
-
     TRUST_PROXY = env_flag("TRUST_PROXY")
 
     RESEND_API_KEY = os.environ.get("RESEND_API_KEY")
