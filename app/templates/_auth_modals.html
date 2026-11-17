@@ -1,0 +1,86 @@
+{# Log in and Register pop-ups for the home page. Included by index.html.
+   Receives login_form, register_form and open_modal from routes/auth.py (landing()). #}
+{% from "_macros.html" import brand_mark %}
+
+{# One box with its label and messages. `id` is given by hand because both forms have an
+   "email" and a "password": two boxes with the same id would break labels and checks. #}
+{% macro mfield(field, id, hint=None) %}
+<div class="mb-3">
+  {{ field.label(class="form-label", **{"for": id}) }}
+  {{ field(id=id, class="form-control" ~ (" is-invalid" if field.errors else "")) }}
+  {% for error in field.errors %}<div class="invalid-feedback">{{ error }}</div>{% endfor %}
+  {% if hint and not field.errors %}<div class="form-text">{{ hint }}</div>{% endif %}
+</div>
+{% endmacro %}
+
+{# Tells the page script which pop-up to open on load (set after a wrong password, etc.). #}
+<div id="auth-open" data-open="{{ open_modal or '' }}" hidden></div>
+
+{# ---------- Log in ---------- #}
+<div class="modal fade" id="loginModal" tabindex="-1" aria-labelledby="loginTitle" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content" style="border:0;border-radius:1rem;">
+      <div class="modal-header border-0 pb-0">
+        <button type="button" class="btn-close ms-auto" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body px-4 pb-4 pt-0">
+        <div class="text-center mb-4">
+          {{ brand_mark(48) }}
+          <h2 class="h3 mt-3 mb-1" id="loginTitle">Welcome back</h2>
+          <p class="text-muted mb-0">Log in to manage your equipment.</p>
+        </div>
+
+        <form method="POST" action="{{ url_for('auth.login', next=request.args.get('next')) }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          {{ mfield(login_form.email, "login-email") }}
+          {{ mfield(login_form.password, "login-password") }}
+          <div class="text-end mb-3">
+            <a class="small fw-bold" href="{{ url_for('auth.request_password_reset') }}">Forgot password?</a>
+          </div>
+          <div class="form-check mb-3">
+            {{ login_form.remember(class="form-check-input", id="login-remember") }}
+            {{ login_form.remember.label(class="form-check-label", **{"for": "login-remember"}) }}
+          </div>
+          {{ login_form.submit(class="btn btn-brand btn-lg w-100", id="login-submit") }}
+        </form>
+
+        <p class="mt-4 mb-0 text-center">
+          No account yet?
+          <a class="fw-bold" href="{{ url_for('auth.register') }}" data-auth-modal="register">Register</a>
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+
+{# ---------- Register ---------- #}
+<div class="modal fade" id="registerModal" tabindex="-1" aria-labelledby="registerTitle" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content" style="border:0;border-radius:1rem;">
+      <div class="modal-header border-0 pb-0">
+        <button type="button" class="btn-close ms-auto" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body px-4 pb-4 pt-0">
+        <div class="text-center mb-4">
+          {{ brand_mark(48) }}
+          <h2 class="h3 mt-3 mb-1" id="registerTitle">Create an account</h2>
+          <p class="text-muted mb-0">Start tracking your catering equipment.</p>
+        </div>
+
+        <form method="POST" action="{{ url_for('auth.register') }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          {{ mfield(register_form.full_name, "register-name") }}
+          {{ mfield(register_form.email, "register-email") }}
+          {{ mfield(register_form.password, "register-password", hint="At least 8 characters, with a letter and a number.") }}
+          {{ mfield(register_form.confirm_password, "register-confirm") }}
+          {{ register_form.submit(class="btn btn-brand btn-lg w-100 mt-2", id="register-submit") }}
+        </form>
+
+        <p class="mt-4 mb-0 text-center">
+          Already have an account?
+          <a class="fw-bold" href="{{ url_for('auth.login') }}" data-auth-modal="login">Log in</a>
+        </p>
+      </div>
+    </div>
+  </div>
+</div>

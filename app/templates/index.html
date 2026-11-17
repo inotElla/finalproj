@@ -17,8 +17,8 @@
           {% if current_user.is_authenticated %}
             <a class="btn btn-brand btn-lg" href="{{ url_for('main.dashboard') }}">Go to dashboard {{ icon('arrow', 18) }}</a>
           {% else %}
-            <a class="btn btn-brand btn-lg" href="{{ url_for('auth.register') }}">Get started {{ icon('arrow', 18) }}</a>
-            <a class="btn btn-soft btn-lg" href="{{ url_for('auth.login') }}">Log in</a>
+            <a class="btn btn-brand btn-lg" href="{{ url_for('auth.register') }}" data-auth-modal="register">Get started {{ icon('arrow', 18) }}</a>
+            <a class="btn btn-soft btn-lg" href="{{ url_for('auth.login') }}" data-auth-modal="login">Log in</a>
           {% endif %}
         </div>
       </div>
@@ -29,7 +29,7 @@
             <div class="d-flex justify-content-between align-items-start mb-2">
               <div>
                 <div class="mock-tag">Example checklist</div>
-                <h2 class="h5 mb-0 mt-1">Santos Wedding</h2>
+                <h2 class="h5 mb-0 mt-1">Wedding</h2>
                 <small class="text-muted">Venue pick-up checklist</small>
               </div>
               <span class="pill pill-yellow">Out</span>
@@ -70,14 +70,13 @@
 {# ---------- Problems ---------- #}
 <section class="section">
   <div class="container">
-    <h2 class="section-title">The problems we solve</h2>
-    <p class="section-sub mb-4">Catering equipment travels far from the stock room. Paper logs make it easy to lose track of it.</p>
+    <h2 class="section-title">The problems</h2>
     <div class="row g-3">
       <div class="col-md-4">
         <div class="card-c info-card">
           <div class="tile tone-pink">{{ icon('pin', 24) }}</div>
           <h3>Equipment loss at off-site events</h3>
-          <p>Items sent to venues away from base are hard to keep an eye on.</p>
+          <p>Items sent to venues away are hard to keep an eye on.</p>
         </div>
       </div>
       <div class="col-md-4">
@@ -102,7 +101,6 @@
 <section class="section pt-0">
   <div class="container">
     <h2 class="section-title">What C.A.T.E.R. does</h2>
-    <p class="section-sub mb-4">Three simple tools that keep your inventory accurate.</p>
     <div class="row g-3">
       <div class="col-md-4">
         <div class="card-c info-card">
@@ -136,7 +134,7 @@
     <div class="row g-4">
       <div class="col-sm-6 col-lg-3"><div class="goal">{{ icon('check-circle') }}<span>Track equipment status across active venues</span></div></div>
       <div class="col-sm-6 col-lg-3"><div class="goal">{{ icon('check-circle') }}<span>Use fully digital checklists</span></div></div>
-      <div class="col-sm-6 col-lg-3"><div class="goal">{{ icon('check-circle') }}<span>Get pick-up alerts after an event ends</span></div></div>
+      <div class="col-sm-6 col-lg-3"><div class="goal">{{ icon('check-circle') }}<span>Get reminded after an event ends</span></div></div>
       <div class="col-sm-6 col-lg-3"><div class="goal">{{ icon('check-circle') }}<span>Reduce unrecovered equipment</span></div></div>
     </div>
   </div>
@@ -147,12 +145,76 @@
 <section class="section">
   <div class="container">
     <div class="cta text-center">
-      <h2 class="mb-2">Ready to stop losing equipment?</h2>
       <p class="mb-4">Create an account and start tracking your catering assets today.</p>
-      <a class="btn btn-cream btn-lg" href="{{ url_for('auth.register') }}">Create an account</a>
+      <a class="btn btn-cream btn-lg" href="{{ url_for('auth.register') }}" data-auth-modal="register">Create an account</a>
     </div>
   </div>
 </section>
 {% endif %}
 
+{# The Log in / Register pop-ups (the markup must be here, before app.js runs, so the eye
+   buttons and form checks reach their boxes). Only for visitors who are not signed in. #}
+{% if not current_user.is_authenticated and login_form is defined %}
+{% include "_auth_modals.html" %}
+{% endif %}
+
+{% endblock %}
+
+{% block scripts %}
+{% if not current_user.is_authenticated and login_form is defined %}
+<script>
+  (() => {
+    if (!window.bootstrap) return; 
+
+    ["login", "register"].forEach((name) => {
+      const el = document.getElementById(name + "Modal");
+      if (el) modals[name] = { el, modal: bootstrap.Modal.getOrCreateInstance(el) };
+    });
+    if (!modals.login || !modals.register) return;
+
+    let current = null; 
+    Object.entries(modals).forEach(([name, { el }]) => {
+      el.addEventListener("shown.bs.modal", () => {
+        current = name;
+        const first = el.querySelector("input:not([type=hidden])");
+        if (first) first.focus();
+      });
+      el.addEventListener("hidden.bs.modal", () => {
+        if (current === name) current = null;
+
+        if (!current && location.pathname !== "/") {
+          try { history.replaceState(null, "", "/"); } catch (e) {}
+        }
+      });
+    });
+
+    const show = (name) => {
+      if (!modals[name]) return false;
+      if (current && current !== name) {
+
+        modals[current].el.addEventListener("hidden.bs.modal", () => modals[name].modal.show(), { once: true });
+        modals[current].modal.hide();
+      } else if (current !== name) {
+        modals[name].modal.show();
+      }
+      return true;
+    };
+
+    document.addEventListener("click", (event) => {
+      const trigger = event.target.closest("[data-auth-modal]");
+      if (trigger && show(trigger.dataset.authModal)) event.preventDefault();
+    });
+
+    const marker = document.getElementById("auth-open");
+    if (marker && marker.dataset.open) {
+      const name = marker.dataset.open;
+      if (window.caterFeedback) {
+        window.caterFeedback.addEventListener("hidden.bs.modal", () => show(name), { once: true });
+      } else {
+        show(name);
+      }
+    }
+  })();
+</script>
+{% endif %}
 {% endblock %}

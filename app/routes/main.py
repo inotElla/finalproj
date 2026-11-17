@@ -3,6 +3,7 @@ from datetime import datetime, time, timedelta, timezone
 from flask import Blueprint, jsonify, render_template
 from flask_login import current_user, login_required
 
+from app.forms import LoginForm, RegistrationForm
 from app.models import Equipment, EquipmentUnit, Event, User
 
 main_bp = Blueprint("main", __name__)
@@ -21,7 +22,13 @@ def localtime(value, fmt="%b %d, %Y %I:%M %p"):
 
 @main_bp.route("/")
 def index():
-    return render_template("index.html")
+    # The home page holds the Log in / Register pop-ups, so it needs both (empty) forms.
+    return render_template(
+        "index.html",
+        login_form=LoginForm(formdata=None),
+        register_form=RegistrationForm(formdata=None),
+        open_modal=None,
+    )
 
 
 @main_bp.route("/api/health")

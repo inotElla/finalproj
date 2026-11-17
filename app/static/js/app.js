@@ -10,17 +10,19 @@ if (todayEl) {
 }
 
 // ---------- Password and confirm-password must match ----------
-const password = document.getElementById("password");
-const confirmPassword = document.getElementById("confirm_password");
+// Found by field NAME inside each form (not by id), so it also works in the Register pop-up.
+document.querySelectorAll("form").forEach((form) => {
+  const password = form.querySelector("input[name='password']");
+  const confirmPassword = form.querySelector("input[name='confirm_password']");
+  if (!password || !confirmPassword) return;
 
-if (password && confirmPassword) {
   const checkMatch = () => {
     const mismatch = confirmPassword.value && password.value !== confirmPassword.value;
     confirmPassword.setCustomValidity(mismatch ? "Passwords must match." : "");
   };
   password.addEventListener("input", checkMatch);
   confirmPassword.addEventListener("input", checkMatch);
-}
+});
 
 // ---------- Collapse / expand the sidebar ----------
 const sidebarToggle = document.getElementById("sidebar-toggle");
@@ -195,6 +197,16 @@ document.querySelectorAll("input[type='password']").forEach((input) => {
   input.parentNode.insertBefore(wrap, input);
   wrap.appendChild(input);
   input.style.paddingRight = "2.75rem";
+  input.style.backgroundImage = "none"; // Bootstrap's red "!" icon would sit under the eye
+
+  // A server error message sits right after the box. Keep it next to the box inside the wrapper,
+  // otherwise Bootstrap would hide it (it only shows messages that are siblings of the box).
+  let next = wrap.nextElementSibling;
+  while (next && next.classList.contains("invalid-feedback")) {
+    const after = next.nextElementSibling;
+    wrap.appendChild(next);
+    next = after;
+  }
 
   const eyeOpen =
     '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
@@ -204,7 +216,9 @@ document.querySelectorAll("input[type='password']").forEach((input) => {
   const button = document.createElement("button");
   button.type = "button"; // never submits the form
   button.className = "btn btn-link text-muted p-0";
-  button.style.cssText = "position:absolute;top:50%;right:.75rem;transform:translateY(-50%);line-height:1;";
+  // The height of one text box, so the eye stays beside the box even when a message appears under it.
+  button.style.cssText =
+    "position:absolute;top:0;right:.75rem;height:calc(1.5em + .75rem + 2px);display:flex;align-items:center;line-height:1;";
   button.setAttribute("aria-label", "Show password");
   button.innerHTML = eyeOpen;
   wrap.appendChild(button);
@@ -221,3 +235,60 @@ document.querySelectorAll("input[type='password']").forEach((input) => {
 window.addEventListener("pageshow", () => {
   document.querySelectorAll("input[type='text'][autocomplete*='password']").forEach((i) => (i.type = "password"));
 });
+
+// ---------- Feedback messages as a pop-up (like a browser notification) ----------
+// The server sends messages such as "Equipment was added." as coloured bars at the top of the page.
+// Here every one of them is moved into a single centred Bootstrap modal instead. The title and
+// colour follow the most serious message. Without Bootstrap the bars simply stay as they are.
+(() => {
+  const bars = document.querySelectorAll("main > .alert, main > .container > .alert");
+  if (!bars.length || !window.bootstrap) return;
+
+  const rank = { danger: 0, warning: 1, success: 2, info: 3 };
+  const titles = { danger: "Something went wrong", warning: "Please note", success: "Done", info: "Notice" };
+  const colours = { danger: "danger", warning: "warning", success: "success", info: "primary" };
+
+  let top = "info";
+  const messages = [];
+  bars.forEach((bar) => {
+    const kind = Object.keys(rank).find((k) => bar.classList.contains("alert-" + k)) || "info";
+    if (rank[kind] < rank[top]) top = kind;
+    messages.push(bar.textContent.trim());
+    bar.remove(); // the bar is gone; its text now lives in the pop-up
+  });
+
+  const box = document.createElement("div");
+  box.className = "modal fade";
+  box.tabIndex = -1;
+  box.setAttribute("aria-labelledby", "feedbackTitle");
+  box.setAttribute("aria-hidden", "true");
+  box.innerHTML = `
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content" style="border:0;border-radius:1rem;border-top:5px solid var(--bs-${colours[top]});">
+        <div class="modal-header border-0 pb-0">
+          <h2 class="modal-title h5" id="feedbackTitle"></h2>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body"></div>
+        <div class="modal-footer border-0 pt-0">
+          <button type="button" class="btn btn-brand" data-bs-dismiss="modal">OK</button>
+        </div>
+      </div>
+    </div>`;
+  // textContent (not innerHTML): the messages can contain names typed by users.
+  box.querySelector("#feedbackTitle").textContent = titles[top];
+  const body = box.querySelector(".modal-body");
+  messages.forEach((text) => {
+    const p = document.createElement("p");
+    p.className = "mb-2";
+    p.textContent = text;
+    body.appendChild(p);
+  });
+  document.body.appendChild(box);
+
+  const modal = bootstrap.Modal.getOrCreateInstance(box);
+  box.addEventListener("shown.bs.modal", () => box.querySelector(".btn-brand").focus());
+  // Other scripts (the home page) can wait for this pop-up to close before opening theirs.
+  window.caterFeedback = box;
+  modal.show();
+})();

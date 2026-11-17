@@ -29,6 +29,24 @@ from app.throttle import login_limiter, reset_limiter
 auth_bp = Blueprint("auth", __name__)
 
 RESET_TOKEN_MAX_AGE = 3600  # 1 hour
+
+
+def landing(open_modal, login_form=None, register_form=None, status=200):
+    """The home page with the Log in or Register pop-up already open.
+
+    /login and /register no longer have pages of their own: they show the landing
+    page with the matching pop-up on top. When a form has errors, that same form
+    is passed in so its messages appear inside the pop-up."""
+    return (
+        render_template(
+            "index.html",
+            # formdata=None: an untouched form, ignoring anything that was posted.
+            login_form=login_form or LoginForm(formdata=None),
+            register_form=register_form or RegistrationForm(formdata=None),
+            open_modal=open_modal,
+        ),
+        status,
+    )
 RESET_SALT = "password-reset"
 
 
@@ -198,7 +216,7 @@ def register():
         flash("Account created. You can now log in.", "success")
         return redirect(url_for("auth.login"))
 
-    return render_template("register.html", form=form)
+    return landing("register", register_form=form)
 
 
 @auth_bp.route("/login", methods=["GET", "POST"])
@@ -216,7 +234,7 @@ def login():
         if login_limiter.is_blocked(key):
             wait = login_limiter.minutes_left(key)
             flash(f"Too many failed attempts. Try again in {wait} minute{'' if wait == 1 else 's'}.", "danger")
-            return render_template("login.html", form=form), 429
+            return landing("login", login_form=form, status=429)
 
         user = User.query.filter_by(email=email).first()
 
@@ -235,7 +253,7 @@ def login():
         # use this page to find out which emails are registered.
         flash("Invalid email or password.", "danger")
 
-    return render_template("login.html", form=form)
+    return landing("login", login_form=form)
 
 
 @auth_bp.route("/logout", methods=["POST"])

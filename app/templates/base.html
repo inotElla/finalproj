@@ -28,8 +28,8 @@
             <button type="submit" class="btn btn-brand btn-sm">Log out</button>
           </form>
         {% else %}
-          <a class="btn btn-soft btn-sm" href="{{ url_for('auth.login') }}">Log in</a>
-          <a class="btn btn-brand btn-sm" href="{{ url_for('auth.register') }}">Register</a>
+          <a class="btn btn-soft btn-sm" href="{{ url_for('auth.login') }}" data-auth-modal="login">Log in</a>
+          <a class="btn btn-brand btn-sm" href="{{ url_for('auth.register') }}" data-auth-modal="register">Register</a>
         {% endif %}
       </nav>
     </div>
