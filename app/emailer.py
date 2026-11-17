@@ -1,10 +1,10 @@
-import requests  # ← CHANGED: was "import smtplib" — we now use HTTP, not SMTP
+import smtplib
+from email.message import EmailMessage
 
 from flask import current_app, render_template, url_for
 
+SMTP_TIMEOUT_SECONDS = 10
 
-RESEND_API_URL = "https://api.resend.com/emails"
-RESEND_TIMEOUT = 10  
 
 def external_url(endpoint, **values):
     base_url = current_app.config.get("APP_BASE_URL")
@@ -16,37 +16,29 @@ def external_url(endpoint, **values):
 def send_email(to, subject, template, text, **context):
     config = current_app.config
 
-    api_key = config.get("RESEND_API_KEY")
-    if not api_key:
+    if not (config.get("MAIL_USERNAME") and config.get("MAIL_PASSWORD")):
         if current_app.debug:
             current_app.logger.warning(
-                "RESEND_API_KEY is not set. Would have sent to %s | %s\n%s",
-                to, subject, text,
+                "Email is not configured. Would have sent to %s | %s\n%s", to, subject, text
             )
             return
-        raise RuntimeError("Email is not configured: set RESEND_API_KEY.")
+        raise RuntimeError("Email is not configured: set MAIL_USERNAME and MAIL_PASSWORD.")
 
-    sender = config.get("MAIL_DEFAULT_SENDER", "onboarding@resend.dev")
+    message = EmailMessage()
+    message["Subject"] = subject
+    message["From"] = config.get("MAIL_DEFAULT_SENDER") or config.get("MAIL_USERNAME")
+    message["To"] = to
+    message.set_content(text)
+    message.add_alternative(render_template(f"email/{template}.html", **context), subtype="html")
 
-    html_body = render_template(f"email/{template}.html", **context)
+    deliver(message)
 
-    deliver(api_key, sender, to, subject, text, html_body)
 
-def deliver(api_key, sender, to, subject, text, html):
-    response = requests.post(
-        RESEND_API_URL,
-        headers={
-            "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json",
-        },
-        json={
-            "from": sender,
-            "to": [to],
-            "subject": subject,
-            "text": text,
-            "html": html,
-        },
-        timeout=RESEND_TIMEOUT,
-    )
-
-    response.raise_for_status()
+def deliver(message):
+    config = current_app.config
+    server_class = smtplib.SMTP_SSL if config.get("MAIL_USE_SSL") else smtplib.SMTP
+    with server_class(config["MAIL_SERVER"], config["MAIL_PORT"], timeout=SMTP_TIMEOUT_SECONDS) as server:
+        if config.get("MAIL_USE_TLS") and not config.get("MAIL_USE_SSL"):
+            server.starttls()
+        server.login(config["MAIL_USERNAME"], config["MAIL_PASSWORD"])
+        server.send_message(message)

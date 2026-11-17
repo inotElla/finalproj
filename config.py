@@ -42,7 +42,15 @@ class Config:
     MAX_CONTENT_LENGTH = 1 * 1024 * 1024
     TRUST_PROXY = env_flag("TRUST_PROXY")
 
-    RESEND_API_KEY = os.environ.get("RESEND_API_KEY")
-    MAIL_DEFAULT_SENDER = os.environ.get("MAIL_DEFAULT_SENDER", "onboarding@resend.dev")
+    # RESEND_API_KEY = os.environ.get("RESEND_API_KEY")
+    # MAIL_DEFAULT_SENDER = os.environ.get("MAIL_DEFAULT_SENDER", "onboarding@resend.dev")
+
+    MAIL_SERVER = os.environ.get("MAIL_SERVER", "smtp.gmail.com")
+    MAIL_PORT = int(os.environ.get("MAIL_PORT", "587"))
+    MAIL_USE_TLS = env_flag("MAIL_USE_TLS", "true")
+    MAIL_USE_SSL = env_flag("MAIL_USE_SSL", "false")
+    MAIL_USERNAME = os.environ.get("MAIL_USERNAME")
+    MAIL_PASSWORD = os.environ.get("MAIL_PASSWORD")
+    MAIL_DEFAULT_SENDER = os.environ.get("MAIL_DEFAULT_SENDER") or MAIL_USERNAME
 
     APP_BASE_URL = os.environ.get("APP_BASE_URL", "").rstrip("/")
