@@ -12,11 +12,11 @@ from flask import (
     url_for,
 )
 from flask_login import current_user, login_required, login_user, logout_user
-from flask_mail import Message
 from itsdangerous import BadData, URLSafeTimedSerializer
 
-from app import db, mail
+from app import db
 from app.activity import log_activity
+from app.emailer import send_email
 from app.forms import (
     LoginForm,
     PasswordResetRequestForm,
@@ -107,25 +107,13 @@ def build_reset_url(token):
 
 
 def send_reset_email(user):
-    config = current_app.config
     reset_url = build_reset_url(make_reset_token(user))
-
-    if not (config.get("MAIL_USERNAME") and config.get("MAIL_PASSWORD")):
-        if current_app.debug:
-            # Lets you build and test without a real mailbox: the link is printed
-            # in the terminal instead of being emailed.
-            current_app.logger.warning(
-                "Email is not configured. Reset link for %s: %s", user.email, reset_url
-            )
-            return
-        raise RuntimeError("Email is not configured: set MAIL_USERNAME and MAIL_PASSWORD.")
-
     minutes = RESET_TOKEN_MAX_AGE // 60
-    message = Message(
-        subject="Reset your C.A.T.E.R. password",
-        recipients=[user.email],
-        sender=config.get("MAIL_DEFAULT_SENDER") or config.get("MAIL_USERNAME"),
-        body=(
+    send_email(
+        user.email,
+        "Reset your C.A.T.E.R. password",
+        "reset_password",
+        text=(
             f"Hi {user.full_name},\n\n"
             "We received a request to reset your C.A.T.E.R. password. "
             f"Open this link within {minutes} minutes. It can only be used once:\n\n"
@@ -133,14 +121,10 @@ def send_reset_email(user):
             "If you did not ask for this, you can ignore this email. "
             "Your password will not change."
         ),
-        html=render_template(
-            "email/reset_password.html",
-            user=user,
-            reset_url=reset_url,
-            minutes=minutes,
-        ),
+        user=user,
+        reset_url=reset_url,
+        minutes=minutes,
     )
-    mail.send(message)
 
 
 @auth_bp.route("/reset-password", methods=["GET", "POST"])
@@ -263,5 +247,7 @@ def logout():
     logout_user()
     flash("You have been logged out.", "info")
     return redirect(url_for("auth.login"))
+
+
 
 

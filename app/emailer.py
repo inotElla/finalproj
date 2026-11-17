@@ -1,7 +1,9 @@
-from flask import current_app, render_template, url_for
-from flask_mail import Message
+import smtplib
+from email.message import EmailMessage
 
-from app import mail
+from flask import current_app, render_template, url_for
+
+SMTP_TIMEOUT_SECONDS = 10  # give up quickly instead of hanging the page
 
 
 def external_url(endpoint, **values):
@@ -35,11 +37,29 @@ def send_email(to, subject, template, text, **context):
             return
         raise RuntimeError("Email is not configured: set MAIL_USERNAME and MAIL_PASSWORD.")
 
-    message = Message(
-        subject=subject,
-        recipients=[to],
-        sender=config.get("MAIL_DEFAULT_SENDER") or config.get("MAIL_USERNAME"),
-        body=text,
-        html=render_template(f"email/{template}.html", **context),
-    )
-    mail.send(message)
+    message = EmailMessage()
+    message["Subject"] = subject
+    message["From"] = config.get("MAIL_DEFAULT_SENDER") or config.get("MAIL_USERNAME")
+    message["To"] = to
+    message.set_content(text)  # plain-text part
+    message.add_alternative(render_template(f"email/{template}.html", **context), subtype="html")
+
+    deliver(message)
+
+
+def deliver(message):
+    """Open a connection to the mail server and send one message.
+
+    We talk to the mail server ourselves (instead of Flask-Mail) for one reason: the
+    `timeout`. If the host blocks the SMTP port, a plain connection waits forever,
+    the web server gives up on the page after 30 seconds and the visitor sees
+    "502 Bad Gateway". With a timeout, the attempt fails after a few seconds and the
+    page can show a friendly "could not send" message."""
+    config = current_app.config
+    server_class = smtplib.SMTP_SSL if config.get("MAIL_USE_SSL") else smtplib.SMTP
+    with server_class(config["MAIL_SERVER"], config["MAIL_PORT"], timeout=SMTP_TIMEOUT_SECONDS) as server:
+        if config.get("MAIL_USE_TLS") and not config.get("MAIL_USE_SSL"):
+            server.starttls()
+        server.login(config["MAIL_USERNAME"], config["MAIL_PASSWORD"])
+        server.send_message(message)
+
